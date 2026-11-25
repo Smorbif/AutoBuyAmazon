@@ -1,0 +1,7 @@
+.env
+node_modules/
+data/
+playwright-report/
+test-results/
+release-test/
+*.zip

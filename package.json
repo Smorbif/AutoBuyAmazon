@@ -1,0 +1,19 @@
+{
+  "name": "keepa-amazon-browser-buyer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "login": "node src/login.mjs",
+    "keepa-login": "node src/keepa-login.mjs",
+    "telegram-login": "node src/telegram-login.mjs",
+    "start": "node src/server.mjs",
+    "launcher": "node src/launch.mjs",
+    "telegram-listener": "node src/telegram-listener.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "playwright": "^1.58.0",
+    "teleproto": "^1.234.0"
+  }
+}
