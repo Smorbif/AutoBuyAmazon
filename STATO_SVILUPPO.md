@@ -2,6 +2,13 @@
 
 **Aggiornato:** 25 novembre 2026
 **Stato:** prototipo grafico Windows/Linux con due sorgenti notifiche (Telegram o sito Keepa), pronto per una prova controllata. L’estrazione dal sito Keepa e l’acquisto reale Amazon non sono stati collaudati con gli account dell’utente.
+## Stato della revisione corrente
+
+- La revisione include il selettore italiano/inglese nell’intestazione e mantiene la lingua scelta nel browser.
+- Il pulsante Telegram riflette la sessione già riconosciuta: propone la verifica dell’account invece di invitare a collegarlo di nuovo.
+- Gli avvisi Keepa vengono associati al marketplace Amazon indicato dal link, tra gli store europei supportati; il Regno Unito resta escluso. I prezzi sono trattati nella valuta del marketplace.
+- Per rendere effettivi i cambiamenti ai listener e al checkout occorre riavviare l’applicazione. La navigazione dell’interfaccia aggiornata basta invece per caricare i testi IT/EN.
+- Stato delle verifiche: controlli statici completati; autenticazione Keepa, parsing live dei marketplace e checkout reale non sono stati provati con gli account dell’utente.
 
 ## Obiettivo
 
