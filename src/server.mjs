@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { settings, projectRoot, reloadSettings, amazonBaseUrl, normalizeText, extractEuroCents, formatEuro, validateTrigger } from './common.mjs';
+import { settings, projectRoot, reloadSettings, amazonBaseUrl, amazonMarketplaceFromUrl, normalizeText, extractMarketplaceMinor, formatMarketplacePrice, validateTrigger } from './common.mjs';
 
 await mkdir(settings.profileDir, { recursive: true });
 await mkdir(settings.dataDir, { recursive: true });
@@ -99,7 +99,7 @@ async function detectOffer(page, trigger) {
   const matches = [];
   for (const card of cards) {
     const text = await card.innerText().catch(() => '');
-    const cents = extractEuroCents(text);
+    const cents = extractMarketplaceMinor(text, trigger.currency);
     if (cents === null) continue;
     if (cents > trigger.maxItemCents) continue;
     matches.push({ card, text, cents });
@@ -110,7 +110,7 @@ async function detectOffer(page, trigger) {
   return matches[0];
 }
 
-async function getCheckoutTotalCents(page) {
+async function getCheckoutTotalCents(page, currency) {
   const selectors = [
     '#subtotals-marketplace-table .grand-total-price',
     '#sc-subtotal-amount-activecart',
@@ -121,7 +121,7 @@ async function getCheckoutTotalCents(page) {
     const locator = page.locator(selector).first();
     if (await locator.count().catch(() => 0)) {
       const value = await locator.innerText().catch(() => '');
-      const cents = extractEuroCents(value);
+      const cents = extractMarketplaceMinor(value, currency);
       if (cents !== null) return cents;
     }
   }
@@ -139,49 +139,50 @@ async function ensureSingleTargetInCart(page, trigger) {
 async function runTrigger(trigger) {
   const browserContext = await getContext();
   const page = browserContext.pages()[0] || await browserContext.newPage();
-  const offersUrl = `${amazonBaseUrl()}/gp/offer-listing/${trigger.asin}`;
+  const marketplaceUrl = amazonBaseUrl(trigger.marketplaceHost);
+  const offersUrl = `${marketplaceUrl}/gp/offer-listing/${trigger.asin}`;
   await page.goto(offersUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
   if (/\/ap\/signin|\/signin/i.test(page.url())) throw new Error('Sessione Amazon non autenticata; esegui npm run login.');
-  if (!page.url().startsWith(amazonBaseUrl())) throw new Error('Navigazione fuori da Amazon.it bloccata.');
+  if (amazonMarketplaceFromUrl(page.url()) !== trigger.marketplaceHost) throw new Error('Navigazione fuori dal marketplace indicato dall’avviso Keepa; nessun acquisto eseguito.');
 
   const offer = await detectOffer(page, trigger);
-  console.log(`[${trigger.notificationId}] Offerta trovata: ${formatEuro(offer.cents)} entro il prezzo dell’avviso Keepa.`);
+  console.log(`[${trigger.notificationId}] Offerta su ${trigger.marketplaceHost}: ${formatMarketplacePrice(offer.cents, trigger.currency)} entro il prezzo dell’avviso Keepa.`);
 
   if (!settings.autoBuy) return { status: 'dry_run', offerCents: offer.cents };
 
-  const addButton = offer.card.getByRole('button', { name: /aggiungi al carrello|add to cart|add to basket/i }).first();
+  const addButton = offer.card.getByRole('button', { name: /aggiungi al carrello|add to (?:cart|basket)|in den einkaufswagen|ajouter au panier|añadir a (?:la )?cesta|in winkelwagen|do koszyka|kundvagnen/i }).first();
   if (!(await addButton.count().catch(() => 0))) throw new Error('Nessun pulsante Aggiungi al carrello riconosciuto dentro l’offerta; nessun ordine eseguito.');
   await addButton.click();
   await page.waitForTimeout(1200);
-  await page.goto(`${amazonBaseUrl()}/cart`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+  await page.goto(`${marketplaceUrl}/cart`, { waitUntil: 'domcontentloaded', timeout: 45000 });
   await ensureSingleTargetInCart(page, trigger);
 
-  const cartTotal = await getCheckoutTotalCents(page);
+  const cartTotal = await getCheckoutTotalCents(page, trigger.currency);
   if (cartTotal === null) throw new Error('Totale carrello non riconoscibile; fermo prima del checkout.');
-  if (cartTotal > trigger.maxTotalCents) throw new Error(`Totale carrello ${formatEuro(cartTotal)} oltre il tetto di ${formatEuro(trigger.maxTotalCents)}.`);
+  if (cartTotal > trigger.maxTotalCents) throw new Error(`Totale carrello ${formatMarketplacePrice(cartTotal, trigger.currency)} oltre il tetto di ${formatMarketplacePrice(trigger.maxTotalCents, trigger.currency)}.`);
 
-  const checkoutButton = page.locator('input[name="proceedToRetailCheckout"], #sc-buy-box-ptc-button, button').filter({ hasText: /procedi all.acquisto|procedi all.ordine|proceed to checkout/i }).first();
+  const checkoutButton = page.locator('input[name="proceedToRetailCheckout"], #sc-buy-box-ptc-button, button').filter({ hasText: /procedi all.acquisto|procedi all.ordine|proceed to checkout|zur kasse|passer (?:la commande|à la caisse)|tramitar pedido|proceder al pago|afrekenen|przejdź do kasy|gå till kassan/i }).first();
   if (!(await checkoutButton.count().catch(() => 0))) throw new Error('Pulsante checkout non riconosciuto; articolo lasciato nel carrello.');
   await checkoutButton.click();
   await page.waitForLoadState('domcontentloaded').catch(() => {});
   await page.waitForTimeout(1200);
 
   if (/\/ap\/signin|\/signin/i.test(page.url())) throw new Error('Amazon richiede un nuovo accesso; nessun ordine inviato.');
-  if (!page.url().startsWith(amazonBaseUrl())) throw new Error('Checkout fuori dal dominio Amazon.it; ordine non inviato.');
+  if (amazonMarketplaceFromUrl(page.url()) !== trigger.marketplaceHost) throw new Error('Checkout fuori dal marketplace indicato dall’avviso Keepa; ordine non inviato.');
   const summaryText = normalizeText(await page.locator('body').innerText().catch(() => ''));
   const targetCheckoutLink = page.locator(`a[href*="${trigger.asin}"]`).first();
   if (!(await targetCheckoutLink.count().catch(() => 0))) throw new Error('Riepilogo checkout senza link prodotto verificabile; ordine non inviato.');
-  const finalTotal = await getCheckoutTotalCents(page);
+  const finalTotal = await getCheckoutTotalCents(page, trigger.currency);
   if (finalTotal === null) throw new Error('Totale finale non riconoscibile; ordine non inviato.');
-  if (finalTotal > trigger.maxTotalCents) throw new Error(`Totale finale ${formatEuro(finalTotal)} oltre il tetto di ${formatEuro(trigger.maxTotalCents)}.`);
+  if (finalTotal > trigger.maxTotalCents) throw new Error(`Totale finale ${formatMarketplacePrice(finalTotal, trigger.currency)} oltre il tetto di ${formatMarketplacePrice(trigger.maxTotalCents, trigger.currency)}.`);
 
   const submit = page.locator('#submitOrderButtonId').first();
   if (!(await submit.count().catch(() => 0))) throw new Error('Pulsante finale non riconosciuto; ordine non inviato.');
   await submit.click();
   await page.waitForTimeout(2500);
   const confirmation = normalizeText(await page.locator('body').innerText().catch(() => ''));
-  if (!/ordine ricevuto|ordine effettuato|order placed|order received|thank you/i.test(confirmation)) {
+  if (!/ordine ricevuto|ordine effettuato|order placed|order received|thank you|bestellung (?:aufgegeben|abgeschlossen)|commande (?:passée|confirmée)|pedido (?:realizado|confirmado)|bestelling geplaatst|zam[oó]wienie (?:złożone|zrealizowane)|best[aä]llning (?:skickad|bekr[aä]ftad)/i.test(confirmation)) {
     throw new Error('Click finale inviato ma conferma ordine non riconosciuta: controlla Amazon prima di ritentare.');
   }
   return { status: 'ordered', offerCents: offer.cents, finalTotalCents: finalTotal };
@@ -476,7 +477,7 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (journal[trigger.notificationId]) return sendJson(response, 200, { status: 'duplicate_ignored' });
-  journal[trigger.notificationId] = { status: 'queued', createdAt: new Date().toISOString(), asin: trigger.asin };
+  journal[trigger.notificationId] = { status: 'queued', createdAt: new Date().toISOString(), asin: trigger.asin, marketplaceHost: trigger.marketplaceHost };
   await saveJournal();
   sendJson(response, 202, { status: 'queued', autoBuy: settings.autoBuy });
 

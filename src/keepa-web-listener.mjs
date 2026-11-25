@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
-import { settings } from './common.mjs';
+import { settings, amazonMarketplaceFromUrl, marketplaceCurrency, extractMarketplaceMinor, formatMarketplacePrice } from './common.mjs';
 
 if (!settings.hookSecret || settings.hookSecret.startsWith('replace-with-')) {
   throw new Error('Salva prima la configurazione dal pannello.');
@@ -14,25 +14,31 @@ let page = context.pages()[0] || await context.newPage();
 const seen = new Set();
 const pageUrl = 'https://keepa.com/#!trackings';
 
-function parsePriceToken(raw) {
-  const value = String(raw || '').replace(/[^\d.,]/g, '');
-  if (!value) return null;
-  const separator = Math.max(value.lastIndexOf(','), value.lastIndexOf('.'));
-  if (separator < 0) return Number(value) * 100;
-  const fraction = value.slice(separator + 1);
-  if (fraction.length !== 2) return null;
-  const whole = value.slice(0, separator).replace(/[.,]/g, '') || '0';
-  const cents = Number(whole) * 100 + Number(fraction);
-  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+function currentPriceCents(text, currency) {
+  const symbol = currency === 'PLN' ? '(?:zł|PLN)' : currency === 'SEK' ? '(?:kr|SEK)' : '€';
+  const tokenPattern = new RegExp(`(?:${symbol}\\s*[\\d][\\d\\s.,]*|[\\d][\\d\\s.,]*\\s*${symbol})`, 'i');
+  const label = String(text).match(/(?:prezzo attuale|current price|aktueller preis|prix actuel|precio actual|huidige prijs|aktuellt pris|aktuell pris|aktualna cena)\s*:?\s*/i);
+  if (label) {
+    const tail = String(text).slice(label.index + label[0].length, label.index + label[0].length + 70);
+    const currentPrice = tail.match(tokenPattern);
+    if (currentPrice) return extractMarketplaceMinor(currentPrice[0], currency);
+  }
+
+  const amounts = [...String(text).matchAll(new RegExp(tokenPattern.source, 'gi'))].map((match) => match[0]);
+  const unique = [...new Set(amounts)];
+  return unique.length === 1 ? extractMarketplaceMinor(unique[0], currency) : null;
 }
 
-function currentPriceCents(text) {
-  const currentPrice = String(text).match(/(?:prezzo attuale|current price)[^\d]{0,24}(?:€\s*)?([\d.,]+)\s*€?/i);
-  if (currentPrice) return parsePriceToken(currentPrice[1]);
-
-  const matches = [...String(text).matchAll(/(?:€\s*([\d.,]+)|([\d.,]+)\s*€)/g)];
-  const amounts = [...new Set(matches.map((match) => match[1] || match[2]))];
-  return amounts.length === 1 ? parsePriceToken(amounts[0]) : null;
+function marketplaceFromRow(row) {
+  const hosts = new Set();
+  for (const href of row.links || []) {
+    const host = amazonMarketplaceFromUrl(href);
+    if (!host) continue;
+    try {
+      if (new URL(href).pathname.toUpperCase().includes(row.asin)) hosts.add(host);
+    } catch {}
+  }
+  return hosts.size === 1 ? [...hosts][0] : null;
 }
 
 async function openRecentNotifications() {
@@ -60,7 +66,7 @@ async function readNotificationRows() {
       for (let depth = 0; parent && depth < 7; depth += 1, parent = parent.parentElement) {
         const text = (parent.innerText || '').replace(/\s+/g, ' ').trim();
         if (text.length > 1600) break;
-        if (asinPattern.test(`${text} ${parent.querySelector('a[href]')?.getAttribute('href') || ''}`) && /€/.test(text)) {
+        if (asinPattern.test(`${text} ${parent.querySelector('a[href]')?.getAttribute('href') || ''}`) && /€|zł|PLN|kr|SEK/i.test(text)) {
           candidates.add(parent);
           break;
         }
@@ -70,11 +76,11 @@ async function readNotificationRows() {
     const rows = [];
     for (const element of candidates) {
       const text = (element.innerText || '').replace(/\s+/g, ' ').trim();
-      if (!text || text.length > 1600 || !/€/.test(text)) continue;
-      const hrefs = [...element.querySelectorAll('a[href]')].map((link) => link.href).join(' ');
-      const asin = `${text} ${hrefs}`.match(asinPattern)?.[0]?.toUpperCase();
+      if (!text || text.length > 1600 || !/(?:€|zł|PLN|kr|SEK)/i.test(text)) continue;
+      const links = [...element.querySelectorAll('a[href]')].map((link) => link.href);
+      const asin = `${text} ${links.join(' ')}`.match(asinPattern)?.[0]?.toUpperCase();
       if (!asin) continue;
-      rows.push({ asin, text, hrefs });
+      rows.push({ asin, text, links });
     }
 
     rows.sort((a, b) => a.text.length - b.text.length);
@@ -93,12 +99,12 @@ function notificationId(row, priceCents) {
     .replace(/\b\d+\s*(?:secondi|minuti|ore|giorni)\s+fa\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
-  const digest = createHash('sha256').update(`${row.asin}|${priceCents}|${stableText}`).digest('hex');
+  const digest = createHash('sha256').update(`${row.asin}|${row.marketplaceHost || 'unknown'}|${priceCents}|${stableText}`).digest('hex');
   return `keepa-${digest}`;
 }
 
-async function forwardNotification(row) {
-  const maxItemCents = currentPriceCents(row.text);
+async function forwardNotification(row, maxItemCents) {
+  const currency = marketplaceCurrency(row.marketplaceHost);
   if (!maxItemCents) {
     console.warn(`Notifica Keepa per ${row.asin} ignorata: prezzo attuale assente o ambiguo.`);
     return;
@@ -108,7 +114,8 @@ async function forwardNotification(row) {
     notificationId: notificationId(row, maxItemCents),
     asin: row.asin,
     maxItemCents,
-    maxTotalCents: maxItemCents
+    maxTotalCents: maxItemCents,
+    marketplaceHost: row.marketplaceHost
   };
   const response = await fetch(`http://127.0.0.1:${settings.port}/trigger`, {
     method: 'POST',
@@ -120,7 +127,7 @@ async function forwardNotification(row) {
   });
   if (!response.ok) throw new Error(`Purchase runner ha risposto ${response.status}: ${await response.text()}`);
   const result = await response.json();
-  console.log(`Notifica Keepa inoltrata: ASIN ${row.asin}, prezzo ${maxItemCents} centesimi. Stato: ${result.status}.`);
+  console.log(`Notifica Keepa inoltrata: ASIN ${row.asin}, marketplace ${row.marketplaceHost}, prezzo ${formatMarketplacePrice(maxItemCents, currency)}. Stato: ${result.status}.`);
 }
 
 try {
@@ -135,22 +142,28 @@ try {
       const rows = await readNotificationRows();
       if (firstRead) {
         for (const row of rows) {
-          const price = currentPriceCents(row.text);
+          row.marketplaceHost = marketplaceFromRow(row);
+          const price = row.marketplaceHost ? currentPriceCents(row.text, marketplaceCurrency(row.marketplaceHost)) : null;
           if (price) seen.add(notificationId(row, price));
         }
         console.log(`Prima lettura completata: ${rows.length} avvisi già presenti ignorati; attendo i nuovi.`);
         firstRead = false;
       } else {
         for (const row of rows) {
-          const price = currentPriceCents(row.text);
+          row.marketplaceHost = marketplaceFromRow(row);
+          const price = row.marketplaceHost ? currentPriceCents(row.text, marketplaceCurrency(row.marketplaceHost)) : null;
           const id = notificationId(row, price || 0);
           if (seen.has(id)) continue;
           seen.add(id);
+          if (!row.marketplaceHost) {
+            console.warn(`Notifica Keepa per ${row.asin} ignorata: marketplace europeo non identificato dal link Amazon.`);
+            continue;
+          }
           if (!price) {
             console.warn(`Notifica Keepa per ${row.asin} non elaborata: prezzo attuale assente o ambiguo.`);
             continue;
           }
-          await forwardNotification(row);
+          await forwardNotification(row, price);
         }
       }
     } catch (error) {

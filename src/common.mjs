@@ -9,12 +9,45 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export const projectRoot = path.resolve(here, '..');
 export const settings = {};
 
+export const EU_AMAZON_MARKETPLACES = new Set([
+  'amazon.de',
+  'amazon.fr',
+  'amazon.it',
+  'amazon.es',
+  'amazon.nl',
+  'amazon.com.be',
+  'amazon.pl',
+  'amazon.se',
+  'amazon.ie'
+]);
+
+export function normalizeAmazonMarketplaceHost(value) {
+  const host = String(value || '').trim().toLowerCase().replace(/\.$/, '').replace(/^www\./, '');
+  return EU_AMAZON_MARKETPLACES.has(host) ? `www.${host}` : null;
+}
+
+export function amazonMarketplaceFromUrl(rawUrl) {
+  try {
+    return normalizeAmazonMarketplaceHost(new URL(rawUrl).hostname);
+  } catch {
+    return null;
+  }
+}
+
+export function marketplaceCurrency(marketplaceHost) {
+  const host = normalizeAmazonMarketplaceHost(marketplaceHost);
+  if (!host) throw new Error('Marketplace Amazon non supportato.');
+  if (host === 'www.amazon.pl') return 'PLN';
+  if (host === 'www.amazon.se') return 'SEK';
+  return 'EUR';
+}
+
 export function reloadSettings() {
   dotenv.config({ path: path.resolve(projectRoot, '.env'), override: true });
   Object.assign(settings, {
     port: Number(process.env.KEEP_BUY_PORT || process.env.PORT || 8787),
     hookSecret: process.env.HOOK_SECRET || '',
-    amazonHost: (process.env.AMAZON_HOST || 'www.amazon.it').toLowerCase(),
+    amazonHost: normalizeAmazonMarketplaceHost(process.env.AMAZON_HOST || 'www.amazon.it') || 'www.amazon.it',
     profileDir: path.resolve(projectRoot, process.env.PROFILE_DIR || './data/amazon-profile'),
     autoBuy: /^true$/i.test(process.env.AUTO_BUY || 'false'),
     headless: /^true$/i.test(process.env.HEADLESS || 'false'),
@@ -46,8 +79,36 @@ export async function persistEnvValue(name, value) {
   reloadSettings();
 }
 
-export function amazonBaseUrl() {
-  return `https://${settings.amazonHost}`;
+export function amazonBaseUrl(marketplaceHost = settings.amazonHost) {
+  const host = normalizeAmazonMarketplaceHost(marketplaceHost);
+  if (!host) throw new Error('Marketplace Amazon non supportato.');
+  return `https://${host}`;
+}
+
+export function extractMarketplaceMinor(value, currency) {
+  const text = String(value || '');
+  const symbol = currency === 'PLN' ? '(?:zł|PLN)' : currency === 'SEK' ? '(?:kr|SEK)' : '€';
+  const amountPattern = String.raw`([\d\s\u00a0.,]+)`;
+  const before = text.match(new RegExp(`${symbol}\\s*${amountPattern}`, 'i'));
+  const after = text.match(new RegExp(`${amountPattern}\\s*${symbol}`, 'i'));
+  const raw = (after || before)?.[1];
+  if (!raw) return null;
+  const normalized = raw.replace(/[\s\u00a0]/g, '');
+  const separator = Math.max(normalized.lastIndexOf(','), normalized.lastIndexOf('.'));
+  if (separator < 0) {
+    const whole = Number(normalized.replace(/\D/g, ''));
+    return Number.isSafeInteger(whole) && whole > 0 ? whole * 100 : null;
+  }
+  const whole = Number(normalized.slice(0, separator).replace(/\D/g, '') || '0');
+  const fractionDigits = normalized.slice(separator + 1).replace(/\D/g, '');
+  if (fractionDigits.length < 1 || fractionDigits.length > 2) return null;
+  const fraction = Number(fractionDigits.padEnd(2, '0'));
+  const minor = whole * 100 + fraction;
+  return Number.isSafeInteger(minor) && minor > 0 ? minor : null;
+}
+
+export function formatMarketplacePrice(minor, currency) {
+  return new Intl.NumberFormat('it-IT', { style: 'currency', currency }).format(minor / 100);
 }
 
 export function normalizeText(value) {
@@ -76,10 +137,12 @@ export function validateTrigger(input) {
   const asin = String(input.asin || '').trim().toUpperCase();
   const maxItemCents = Number(input.maxItemCents);
   const maxTotalCents = Number(input.maxTotalCents);
+  const marketplaceHost = normalizeAmazonMarketplaceHost(input.marketplaceHost);
 
   if (!/^[A-Za-z0-9._:-]{1,200}$/.test(notificationId) || notificationId === '__proto__') throw new Error('notificationId mancante o non valido.');
   if (!/^[A-Z0-9]{10}$/.test(asin)) throw new Error('ASIN non valido.');
-  if (!Number.isInteger(maxItemCents) || maxItemCents < 1) throw new Error('maxItemCents deve essere un intero positivo in centesimi.');
-  if (!Number.isInteger(maxTotalCents) || maxTotalCents < maxItemCents) throw new Error('maxTotalCents deve essere almeno pari a maxItemCents.');
-  return { notificationId, asin, maxItemCents, maxTotalCents };
+  if (!Number.isInteger(maxItemCents) || maxItemCents < 1) throw new Error('maxItemCents deve essere un intero positivo in unità minori della valuta del marketplace.');
+  if (!Number.isInteger(maxTotalCents) || maxTotalCents < maxItemCents) throw new Error('maxTotalCents deve essere almeno pari a maxItemCents nella valuta del marketplace.');
+  if (!marketplaceHost) throw new Error('Marketplace Amazon europeo non valido o non supportato.');
+  return { notificationId, asin, maxItemCents, maxTotalCents, marketplaceHost, currency: marketplaceCurrency(marketplaceHost) };
 }

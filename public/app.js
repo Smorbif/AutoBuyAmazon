@@ -1,4 +1,144 @@
 const $ = (selector) => document.querySelector(selector);
+const translations = {
+  it: {
+    documentTitle: 'Keepa Buyer — Pannello', brandSubtitle: 'Amazon Europa · Resale', mainNavigation: 'Navigazione principale',
+    navOverview: 'Panoramica', navSetup: 'Configurazione', navActivity: 'Attività', localProcessing: 'Elaborazione locale',
+    breadcrumbAutomation: 'Automazioni', breadcrumbKeepa: 'Acquisto Keepa', refreshStatus: 'Aggiorna stato',
+    heroEyebrow: 'MONITORAGGIO PREZZI', heroTitle: 'Pronto a cogliere<br>un’offerta <em>Resale</em>.',
+    heroDescription: 'Scegli Telegram oppure il sito Keepa come fonte degli avvisi e collega il tuo account Amazon. Il programma segue il marketplace indicato dal link dell’avviso e applica i limiti impostati.',
+    serviceStatus: 'Stato servizi', amazonEuropeLabel: 'AMAZON EUROPA', monitorStatusHint: 'Attiva gli acquisti automatici con il pulsante qui sotto',
+    preferencesEyebrow: '01 · PREFERENZE', purchaseRules: 'Regole d’acquisto', savedOnDevice: 'Salvate sul dispositivo',
+    configIntro: 'Keepa decide quando avvisarti in base al prezzo e alla tipologia che hai tracciato. Qui imposti la sorgente e i collegamenti necessari.',
+    notificationSource: 'Fonte degli avvisi Keepa', telegramSource: 'Telegram · messaggi Keepa', keepaWebSource: 'Sito Keepa · Notifiche recenti',
+    keepaSourceHelp: 'Usa il tuo accesso al sito Keepa nel browser. Non serve l’API Keepa; la sessione viene salvata in locale.',
+    telegramApiIdLabel: 'api_id Telegram', telegramApiHashLabel: 'api_hash Telegram', configuredLeaveBlank: 'Già configurato, lascia vuoto per mantenerlo',
+    senderIdLabel: 'ID mittente Keepa su Telegram', autoDetected: 'rilevato automaticamente', senderPlaceholder: 'Verrà rilevato dalla cronologia o dal prossimo avviso',
+    senderAutoHelp: 'Cerca nei 50 avvisi Keepa recenti; se non ne trova, apprende il mittente dal primo avviso valido in modalità prova.',
+    privacyNote: 'Sessioni e configurazione restano sul PC o server che ospita il programma.', saveConfiguration: 'Salva configurazione',
+    protectionEyebrow: '02 · PROTEZIONI', activeLimits: 'Limiti attivi', marketplaceLimit: 'Marketplace europeo',
+    marketplaceLimitDetail: 'Segue il link dell’avviso; Regno Unito escluso', maxPrice: 'Prezzo massimo', maxPriceDetail: 'Non supera il prezzo nell’avviso',
+    keepaCondition: 'Tipologia Keepa', keepaConditionDetail: 'Nessun filtro condizione duplicato', checkedCart: 'Carrello controllato',
+    checkedCartDetail: 'Un solo articolo per ordine',
+    orderNotice: 'Ogni avviso Keepa valido avvia il controllo dell’ASIN sul marketplace indicato dal link. Il totale, spedizione inclusa, non può superare il prezzo dell’avviso; condizione e venditore non vengono filtrati una seconda volta.',
+    connectionsEyebrow: '03 · COLLEGAMENTI', connectAccounts: 'Accedi ai tuoi account', initialAccess: 'Accesso iniziale e verifica',
+    telegramCardTitle: 'Collega Telegram', telegramConnectedTitle: 'Account Telegram', telegramCardDescription: 'Accedi una volta per permettere al programma di leggere gli avvisi Keepa.',
+    keepaCardTitle: 'Collega il sito Keepa', keepaConnectedTitle: 'Account Keepa', keepaCardDescription: 'Accedi nel browser che si apre, poi conferma nel pannello. Il programma controlla “Notifiche recenti”.',
+    amazonCardTitle: 'Accedi ad Amazon Europa', amazonConnectedTitle: 'Account Amazon', amazonCardDescription: 'L’accesso iniziale si apre su Amazon.it. Ogni ordine segue il marketplace del link Keepa.',
+    interactiveValuePlaceholder: 'Inserisci il valore richiesto', send: 'Invia', enter: 'Invio', cancel: 'Annulla',
+    controlEyebrow: '04 · CONTROLLO', startMonitoring: 'Avvia il monitoraggio', startMonitoringButton: 'Avvia monitoraggio', stopMonitoring: 'Ferma',
+    enableAutoBuy: 'Abilita acquisto automatico', disableAutoBuy: 'Disattiva acquisto', latestEvents: 'ULTIMI EVENTI',
+    processedAlerts: 'Avvisi elaborati', noAlerts: 'Nessun avviso elaborato', alertsWillAppear: 'Gli eventi appariranno qui quando arriva una notifica Keepa.',
+    systemStatus: 'STATO DEL SISTEMA', activityLog: 'Registro attività', clear: 'Pulisci', waitingActivity: 'In attesa di attività…',
+    footerProduct: 'Keepa Buyer · Amazon Europa', footerPrivacy: 'Password e dati carta non vengono inviati al webhook.', warning: 'ATTENZIONE',
+    confirmAutoBuyTitle: 'Abilitare gli acquisti automatici?',
+    confirmAutoBuyDescription: 'Ogni nuova notifica Keepa valida può inviare un ordine usando indirizzo e pagamento selezionati su Amazon. Il programma non filtra venditore o condizione e non ripete gli avvisi già elaborati.',
+    confirmAutoBuyNote: 'Prima di attivare, controlla offerta, account Amazon, prezzo massimo e metodo di pagamento.',
+    confirmEnablePurchases: 'Abilita acquisti', switchToEnglish: 'Passa all’inglese', switchToItalian: 'Passa all’italiano',
+    credentialsReady: 'Credenziali Telegram configurate', credentialsMissing: 'Credenziali Telegram da inserire',
+    credentialsDetailReady: 'api_id e api_hash sono salvati in locale.', credentialsDetailMissing: 'Inserisci api_id e api_hash per collegare Telegram.',
+    edit: 'Modifica', insert: 'Inserisci', undo: 'Annulla', connected: 'Connesso', notConnected: 'Non connesso',
+    accessRequired: 'Accesso richiesto', verificationRequired: 'Verifica richiesta', setupRequired: 'Da configurare', accountNotVerified: 'Account non verificato',
+    verifyAccount: 'Verifica account', linkTelegram: 'Collega Telegram', loginKeepa: 'Accedi al sito Keepa', loginAmazon: 'Accedi ad Amazon',
+    sourceTelegramLabel: 'TELEGRAM', sourceKeepaLabel: 'SITO KEEPA', sourceTelegramName: 'Telegram', sourceKeepaName: 'il sito Keepa',
+    telegramSessionNotConnected: 'Sessione non collegata', telegramSessionNeedsVerification: 'Sessione presente · identità da verificare',
+    telegramConnected: '✓ Connesso: {account}', amazonConnected: '✓ Connesso: {account}', keepaConnected: '✓ Connesso: {account}',
+    sessionFoundVerify: 'Sessione trovata · premi Verifica account', monitorStopped: 'Fermo',
+    monitorRunningOrders: 'In funzione · ordini attivi', monitorRunningTest: 'In funzione · prova',
+    monitorBadgeRunning: 'IN FUNZIONE', monitorBadgeStopped: 'FERMO', autoBuyActive: 'Acquisto automatico attivo',
+    autoBuyInactive: 'Acquisto automatico disattivato',
+    monitorOrdersDescription: 'Il monitoraggio legge gli avvisi tramite {source} e può inviare ordini entro i limiti configurati. Eventi e risultati appariranno qui.',
+    monitorTestDescription: 'Il monitoraggio legge gli avvisi tramite {source} e controlla le offerte senza inviare ordini. Eventi e risultati appariranno qui.',
+    telegramInProgress: 'Telegram in corso…', keepaInProgress: 'Keepa in corso…', amazonInProgress: 'Amazon in corso…',
+    telegramLoginTitle: 'Collegamento Telegram', keepaLoginTitle: 'Accesso al sito Keepa', amazonLoginTitle: 'Accesso ad Amazon',
+    accountLoginTitle: 'Collegamento account', followInstructions: 'Segui il passaggio di accesso e invia qui il valore richiesto.',
+    confirmWithoutValue: 'Non serve scrivere nulla: premi “Conferma”', localValueNotice: 'Il valore viene inviato solo al processo locale', confirm: 'Conferma',
+    savedConfiguration: 'Configurazione salvata sul dispositivo.',
+    loginAlreadyRunning: '{source} è già in corso: completa il passaggio nel browser e premi Conferma.', telegramLoginStarted: 'Accesso Telegram avviato.',
+    loginWindowOpened: 'Finestra di accesso {source} aperta.', loginWaiting: '{source} è già in attesa: completa il login e premi Conferma, oppure Annulla per ripartire.',
+    panelUnavailable: 'Pannello non raggiungibile: {message}', monitoringStarted: 'Monitoraggio Keepa avviato.',
+    monitoringStopRequested: 'Arresto del monitoraggio richiesto.', autoBuyEnabled: 'Acquisto automatico abilitato.', autoBuyDisabled: 'Acquisto automatico disattivato.',
+    eventProduct: 'Prodotto', eventWaiting: 'in attesa', eventQueued: 'In coda', eventProcessing: 'In elaborazione', eventDryRun: 'Prova', eventOrdered: 'Ordinato', eventStopped: 'Fermato'
+  },
+  en: {
+    documentTitle: 'Keepa Buyer — Dashboard', brandSubtitle: 'Amazon Europe · Resale', mainNavigation: 'Main navigation',
+    navOverview: 'Overview', navSetup: 'Setup', navActivity: 'Activity', localProcessing: 'Local processing',
+    breadcrumbAutomation: 'Automations', breadcrumbKeepa: 'Keepa purchasing', refreshStatus: 'Refresh status',
+    heroEyebrow: 'PRICE MONITORING', heroTitle: 'Ready to catch<br>a <em>Resale</em> deal.',
+    heroDescription: 'Choose Telegram or the Keepa website for alerts and connect your Amazon account. The program follows the marketplace in the alert link and applies your limits.',
+    serviceStatus: 'Service status', amazonEuropeLabel: 'AMAZON EUROPE', monitorStatusHint: 'Enable automatic purchases with the button below',
+    preferencesEyebrow: '01 · PREFERENCES', purchaseRules: 'Purchase rules', savedOnDevice: 'Saved on this device',
+    configIntro: 'Keepa decides when to alert you based on the price and condition you track. Choose the alert source and configure the required connections here.',
+    notificationSource: 'Keepa alert source', telegramSource: 'Telegram · Keepa messages', keepaWebSource: 'Keepa website · Recent notifications',
+    keepaSourceHelp: 'Use your Keepa website login in the browser. No Keepa API is needed; the session is stored locally.',
+    telegramApiIdLabel: 'Telegram api_id', telegramApiHashLabel: 'Telegram api_hash', configuredLeaveBlank: 'Already configured; leave blank to keep it',
+    senderIdLabel: 'Keepa sender ID on Telegram', autoDetected: 'detected automatically', senderPlaceholder: 'Detected from message history or the next alert',
+    senderAutoHelp: 'Searches the 50 most recent Keepa alerts; if none are found, it learns the sender from the first valid alert in test mode.',
+    privacyNote: 'Sessions and settings stay on the PC or server running the program.', saveConfiguration: 'Save settings',
+    protectionEyebrow: '02 · SAFEGUARDS', activeLimits: 'Active limits', marketplaceLimit: 'European marketplace',
+    marketplaceLimitDetail: 'Follows the alert link; United Kingdom excluded', maxPrice: 'Maximum price', maxPriceDetail: 'Cannot exceed the alert price',
+    keepaCondition: 'Keepa condition', keepaConditionDetail: 'No duplicate condition filter', checkedCart: 'Cart verification', checkedCartDetail: 'One item per order',
+    orderNotice: 'Each valid Keepa alert starts an ASIN check on the marketplace in its link. The order total, including shipping, cannot exceed the alert price; condition and seller are not filtered a second time.',
+    connectionsEyebrow: '03 · CONNECTIONS', connectAccounts: 'Connect your accounts', initialAccess: 'Initial sign-in and verification',
+    telegramCardTitle: 'Connect Telegram', telegramConnectedTitle: 'Telegram account', telegramCardDescription: 'Sign in once to let the program read Keepa alerts.',
+    keepaCardTitle: 'Connect the Keepa website', keepaConnectedTitle: 'Keepa account', keepaCardDescription: 'Sign in in the browser that opens, then confirm in the dashboard. The program checks “Recent notifications”.',
+    amazonCardTitle: 'Sign in to Amazon Europe', amazonConnectedTitle: 'Amazon account', amazonCardDescription: 'Initial sign-in opens amazon.it. Each order follows the marketplace in its Keepa link.',
+    interactiveValuePlaceholder: 'Enter the requested value', send: 'Send', enter: 'Enter', cancel: 'Cancel',
+    controlEyebrow: '04 · CONTROL', startMonitoring: 'Start monitoring', startMonitoringButton: 'Start monitoring', stopMonitoring: 'Stop',
+    enableAutoBuy: 'Enable automatic purchasing', disableAutoBuy: 'Disable purchasing', latestEvents: 'LATEST EVENTS',
+    processedAlerts: 'Processed alerts', noAlerts: 'No alerts processed', alertsWillAppear: 'Events will appear here when a Keepa notification arrives.',
+    systemStatus: 'SYSTEM STATUS', activityLog: 'Activity log', clear: 'Clear', waitingActivity: 'Waiting for activity…',
+    footerProduct: 'Keepa Buyer · Amazon Europe', footerPrivacy: 'Passwords and card details are not sent to the webhook.', warning: 'WARNING',
+    confirmAutoBuyTitle: 'Enable automatic purchases?',
+    confirmAutoBuyDescription: 'Each new valid Keepa alert can submit an order using the address and payment method selected on Amazon. The program does not filter seller or condition, and it does not repeat alerts already processed.',
+    confirmAutoBuyNote: 'Before enabling, check the offer, Amazon account, maximum price and payment method.',
+    confirmEnablePurchases: 'Enable purchases', switchToEnglish: 'Switch to English', switchToItalian: 'Switch to Italian',
+    credentialsReady: 'Telegram credentials configured', credentialsMissing: 'Telegram credentials required',
+    credentialsDetailReady: 'api_id and api_hash are stored locally.', credentialsDetailMissing: 'Enter api_id and api_hash to connect Telegram.',
+    edit: 'Edit', insert: 'Add', undo: 'Cancel', connected: 'Connected', notConnected: 'Not connected',
+    accessRequired: 'Sign-in required', verificationRequired: 'Verification required', setupRequired: 'Setup required', accountNotVerified: 'Account not verified',
+    verifyAccount: 'Verify account', linkTelegram: 'Connect Telegram', loginKeepa: 'Sign in to Keepa', loginAmazon: 'Sign in to Amazon',
+    sourceTelegramLabel: 'TELEGRAM', sourceKeepaLabel: 'KEEPA WEBSITE', sourceTelegramName: 'Telegram', sourceKeepaName: 'the Keepa website',
+    telegramSessionNotConnected: 'Session not connected', telegramSessionNeedsVerification: 'Session found · identity not verified',
+    telegramConnected: '✓ Connected: {account}', amazonConnected: '✓ Connected: {account}', keepaConnected: '✓ Connected: {account}',
+    sessionFoundVerify: 'Session found · press Verify account', monitorStopped: 'Stopped',
+    monitorRunningOrders: 'Running · orders enabled', monitorRunningTest: 'Running · test mode',
+    monitorBadgeRunning: 'RUNNING', monitorBadgeStopped: 'STOPPED', autoBuyActive: 'Automatic purchasing enabled',
+    autoBuyInactive: 'Automatic purchasing disabled',
+    monitorOrdersDescription: 'Monitoring reads alerts from {source} and can submit orders within your configured limits. Events and results will appear here.',
+    monitorTestDescription: 'Monitoring reads alerts from {source} and checks offers without submitting orders. Events and results will appear here.',
+    telegramInProgress: 'Telegram in progress…', keepaInProgress: 'Keepa in progress…', amazonInProgress: 'Amazon in progress…',
+    telegramLoginTitle: 'Telegram sign-in', keepaLoginTitle: 'Keepa website sign-in', amazonLoginTitle: 'Amazon sign-in',
+    accountLoginTitle: 'Account connection', followInstructions: 'Follow the sign-in step and enter the requested value here.',
+    confirmWithoutValue: 'Nothing to type: press “Confirm”', localValueNotice: 'This value is sent only to the local process', confirm: 'Confirm',
+    savedConfiguration: 'Settings saved on this device.', loginAlreadyRunning: '{source} is already in progress: finish the step in the browser and press Confirm.',
+    telegramLoginStarted: 'Telegram sign-in started.', loginWindowOpened: '{source} sign-in window opened.',
+    loginWaiting: '{source} is already waiting: finish sign-in and press Confirm, or Cancel to start over.',
+    panelUnavailable: 'Dashboard unavailable: {message}', monitoringStarted: 'Keepa monitoring started.',
+    monitoringStopRequested: 'Monitoring stop requested.', autoBuyEnabled: 'Automatic purchasing enabled.', autoBuyDisabled: 'Automatic purchasing disabled.',
+    eventProduct: 'Product', eventWaiting: 'waiting', eventQueued: 'Queued', eventProcessing: 'Processing', eventDryRun: 'Test', eventOrdered: 'Ordered', eventStopped: 'Stopped'
+  }
+};
+let currentLanguage = localStorage.getItem('keepa-buyer-language') === 'en' ? 'en' : 'it';
+const tr = (key, values = {}) => (translations[currentLanguage][key] || translations.it[key] || key)
+  .replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
+
+function applyLanguage(language) {
+  currentLanguage = language === 'en' ? 'en' : 'it';
+  localStorage.setItem('keepa-buyer-language', currentLanguage);
+  document.documentElement.lang = currentLanguage;
+  for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = tr(element.dataset.i18n);
+  for (const element of document.querySelectorAll('[data-i18n-html]')) element.innerHTML = tr(element.dataset.i18nHtml);
+  for (const element of document.querySelectorAll('[data-i18n-placeholder]')) element.placeholder = tr(element.dataset.i18nPlaceholder);
+  for (const element of document.querySelectorAll('[data-i18n-aria]')) element.setAttribute('aria-label', tr(element.dataset.i18nAria));
+  for (const element of document.querySelectorAll('[data-i18n-title]')) element.title = tr(element.dataset.i18nTitle);
+  const flag = currentLanguage === 'it' ? '🇬🇧' : '🇮🇹';
+  $('#languageToggle').innerHTML = `<span class="language-flag" aria-hidden="true">${flag}</span><span id="languageToggleLabel">${currentLanguage === 'it' ? 'EN' : 'IT'}</span>`;
+  $('#languageToggle').setAttribute('aria-label', tr(currentLanguage === 'it' ? 'switchToEnglish' : 'switchToItalian'));
+  document.title = tr('documentTitle');
+  updateSourceChoice();
+  updateTelegramCredentials(latestConfig);
+}
+
 const toast = $('#toast');
 let toastTimer;
 let configDirty = false;
@@ -21,7 +161,7 @@ async function api(path, options = {}) {
     headers: { 'content-type': 'application/json', ...(options.headers || {}) }
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || `Errore ${response.status}`);
+  if (!response.ok) throw new Error(result.error || `${currentLanguage === 'it' ? 'Errore' : 'Error'} ${response.status}`);
   return result;
 }
 
@@ -47,11 +187,26 @@ function telegramAccountText(account) {
   return [name, handle].filter(Boolean).join(' · ');
 }
 
+function eventPrice(event) {
+  if (!event.offerCents) return tr('eventWaiting');
+  const host = String(event.marketplaceHost || '');
+  const currency = host.endsWith('.pl') ? 'PLN' : host.endsWith('.se') ? 'SEK' : 'EUR';
+  const locale = currentLanguage === 'it' ? 'it-IT' : 'en-GB';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(event.offerCents / 100);
+}
+
+function eventStatus(status) {
+  const labels = {
+    queued: tr('eventQueued'), processing: tr('eventProcessing'), dry_run: tr('eventDryRun'), ordered: tr('eventOrdered'), stopped: tr('eventStopped')
+  };
+  return labels[status] || status || tr('eventQueued');
+}
+
 function renderEvents(events) {
   const list = $('#eventsList');
   $('#eventCount').textContent = String(events.length);
   if (!events.length) {
-    list.innerHTML = '<div class="empty-state"><span>◷</span><strong>Nessun avviso elaborato</strong><small>Gli eventi appariranno qui quando arriva una notifica Keepa.</small></div>';
+    list.innerHTML = `<div class="empty-state"><span>◷</span><strong>${tr('noAlerts')}</strong><small>${tr('alertsWillAppear')}</small></div>`;
     return;
   }
   list.replaceChildren(...events.map((event) => {
@@ -59,13 +214,13 @@ function renderEvents(events) {
     row.className = 'event-row';
     const title = document.createElement('div');
     title.className = 'event-title';
-    title.textContent = `${event.asin || 'Prodotto'} · ${event.offerCents ? (event.offerCents / 100).toFixed(2) + ' €' : 'in attesa'}`;
+    title.textContent = `${event.asin || tr('eventProduct')} · ${eventPrice(event)}`;
     const state = document.createElement('span');
     state.className = 'event-state';
-    state.textContent = event.status || 'queued';
+    state.textContent = eventStatus(event.status);
     const sub = document.createElement('div');
     sub.className = 'event-sub';
-    sub.textContent = event.error || new Date(event.createdAt || Date.now()).toLocaleString('it-IT');
+    sub.textContent = event.error || new Date(event.createdAt || Date.now()).toLocaleString(currentLanguage === 'it' ? 'it-IT' : 'en-GB');
     row.append(title, state, sub);
     return row;
   }));
@@ -74,7 +229,7 @@ function renderEvents(events) {
 function renderActivity(activity) {
   const list = $('#activityList');
   if (!activity.length) {
-    list.innerHTML = '<div class="empty-log">In attesa di attività…</div>';
+    list.innerHTML = `<div class="empty-log">${tr('waitingActivity')}</div>`;
     return;
   }
   list.replaceChildren(...activity.slice().reverse().map((entry) => {
@@ -82,7 +237,7 @@ function renderActivity(activity) {
     row.className = `log-row ${entry.level || 'info'}`;
     const time = document.createElement('span');
     time.className = 'log-time';
-    time.textContent = new Date(entry.time).toLocaleTimeString('it-IT');
+    time.textContent = new Date(entry.time).toLocaleTimeString(currentLanguage === 'it' ? 'it-IT' : 'en-GB');
     const message = document.createElement('span');
     message.className = 'log-message';
     message.textContent = entry.message;
@@ -99,13 +254,26 @@ function updateInteractive(state) {
   }
   const recent = state.activity.slice().reverse();
   const promptEntry = recent.find((entry) => /Numero Telegram|Codice ricevuto|Password Telegram|premi (?:Invio|Conferma)/i.test(entry.message));
-  const promptText = promptEntry?.message.replace(/^(Telegram|Amazon):\s*/, '') || 'Segui il passaggio di accesso e invia qui il valore richiesto.';
-  const titles = { telegram: 'Collegamento Telegram', amazon: 'Accesso Amazon.it', keepa: 'Accesso al sito Keepa' };
-  $('#interactiveTitle').textContent = titles[state.interactiveKind] || 'Collegamento account';
+  let promptText = promptEntry?.message.replace(/^(Telegram|Amazon|Keepa):\s*/, '') || tr('followInstructions');
+  if (currentLanguage === 'en') {
+    const promptTranslations = [
+      [/Numero Telegram con prefisso internazionale/i, 'Enter your Telegram phone number with country code:'],
+      [/Codice ricevuto da Telegram/i, 'Enter the login code sent by Telegram:'],
+      [/Password Telegram di verifica in due passaggi \(se attiva\)/i, 'Enter your Telegram two-step verification password (if enabled):'],
+      [/Accedi ad Amazon, poi premi Invio per verificare l.account/i, 'Sign in to Amazon, then press Enter to verify the account.'],
+      [/premi Invio|premi Conferma/i, 'Sign in in the browser, then press Confirm here.']
+    ];
+    for (const [pattern, replacement] of promptTranslations) {
+      if (pattern.test(promptText)) { promptText = promptText.replace(pattern, replacement); break; }
+    }
+  }
+  const titles = { telegram: tr('telegramLoginTitle'), amazon: tr('amazonLoginTitle'), keepa: tr('keepaLoginTitle') };
+  $('#interactiveTitle').textContent = titles[state.interactiveKind] || tr('accountLoginTitle');
   $('#interactivePrompt').textContent = promptText;
-  $('#interactiveInput').placeholder = /premi (?:Invio|Conferma)/i.test(promptText) ? 'Non serve scrivere nulla: premi “Conferma”' : 'Il valore viene inviato solo al processo locale';
-  $('#interactiveInput').type = /Password/i.test(promptText) ? 'password' : 'text';
-  $('#interactiveEnter').textContent = /premi (?:Invio|Conferma)/i.test(promptText) ? 'Conferma' : 'Invio';
+  const confirmPrompt = /premi (?:Invio|Conferma)|press (?:Enter|Confirm)/i.test(promptText);
+  $('#interactiveInput').placeholder = confirmPrompt ? tr('confirmWithoutValue') : tr('localValueNotice');
+  $('#interactiveInput').type = /Password|password/i.test(promptText) ? 'password' : 'text';
+  $('#interactiveEnter').textContent = confirmPrompt ? tr('confirm') : tr('enter');
   area.classList.remove('hidden');
 }
 
@@ -116,7 +284,7 @@ function updateSourceChoice() {
   $('#keepaSourceHelp').classList.toggle('hidden', !isKeepaWeb);
   $('#telegramConnectionCard').classList.toggle('hidden', isKeepaWeb);
   $('#keepaConnectionCard').classList.toggle('hidden', !isKeepaWeb);
-  $('#sourceStatusLabel').textContent = isKeepaWeb ? 'SITO KEEPA' : 'TELEGRAM';
+  $('#sourceStatusLabel').textContent = isKeepaWeb ? tr('sourceKeepaLabel') : tr('sourceTelegramLabel');
   $('#sourceStatusIcon').textContent = isKeepaWeb ? 'K' : '✈';
   $('#sourceStatusIcon').classList.toggle('telegram-icon', !isKeepaWeb);
   $('#sourceStatusIcon').classList.toggle('keepa-brand', isKeepaWeb);
@@ -127,12 +295,12 @@ function updateTelegramCredentials(config) {
   const dot = $('#telegramCredentialsDot');
   dot.classList.toggle('online', ready);
   dot.classList.toggle('offline', !ready);
-  $('#telegramCredentialsLabel').textContent = ready ? 'Credenziali Telegram configurate' : 'Credenziali Telegram da inserire';
+  $('#telegramCredentialsLabel').textContent = ready ? tr('credentialsReady') : tr('credentialsMissing');
   $('#telegramCredentialsDetail').textContent = ready
-    ? 'api_id e api_hash sono salvati in locale.'
-    : 'Inserisci api_id e api_hash per collegare Telegram.';
+    ? tr('credentialsDetailReady')
+    : tr('credentialsDetailMissing');
   $('#telegramCredentialsEditor').classList.toggle('hidden', !telegramCredentialsEditorOpen);
-  $('#telegramCredentialsToggle').textContent = telegramCredentialsEditorOpen ? 'Annulla' : ready ? 'Modifica' : 'Inserisci';
+  $('#telegramCredentialsToggle').textContent = telegramCredentialsEditorOpen ? tr('undo') : ready ? tr('edit') : tr('insert');
   $('#telegramCredentialsToggle').setAttribute('aria-expanded', String(telegramCredentialsEditorOpen));
 }
 
@@ -150,18 +318,21 @@ async function refresh() {
     const telegramReady = state.telegramSessionExists && Boolean(telegramAccount?.id);
     const keepaReady = state.keepaSessionConfirmed && Boolean(keepaAccount?.displayName);
     const amazonReady = state.amazonSessionConfirmed && Boolean(amazonAccount?.displayName);
-    $('#autoBuyStatus').innerHTML = `<span class="tiny-dot"></span>Acquisto automatico ${state.autoBuy ? 'attivo' : 'disattivato'}`;
-    const sourceName = displayedSource === 'keepa-web' ? 'il sito Keepa' : 'Telegram';
+    $('#telegramConnectionCard h3').textContent = telegramReady ? tr('telegramConnectedTitle') : tr('telegramCardTitle');
+    $('#keepaConnectionCard h3').textContent = keepaReady ? tr('keepaConnectedTitle') : tr('keepaCardTitle');
+    $('#amazonConnectionCard h3').textContent = amazonReady ? tr('amazonConnectedTitle') : tr('amazonCardTitle');
+    $('#autoBuyStatus').innerHTML = `<span class="tiny-dot"></span>${state.autoBuy ? tr('autoBuyActive') : tr('autoBuyInactive')}`;
+    const sourceName = displayedSource === 'keepa-web' ? tr('sourceKeepaName') : tr('sourceTelegramName');
     $('#monitorDescription').textContent = state.autoBuy
-      ? `Il monitoraggio legge gli avvisi da ${sourceName} e può inviare ordini secondo i limiti configurati. Gli eventi e i risultati appariranno qui.`
-      : `Il monitoraggio legge gli avvisi da ${sourceName} e controlla le offerte senza inviare ordini. Gli eventi e i risultati appariranno qui.`;
+      ? tr('monitorOrdersDescription', { source: sourceName })
+      : tr('monitorTestDescription', { source: sourceName });
     const sourceReady = displayedSource === 'keepa-web' ? keepaReady : telegramReady;
-    $('#sourceStatus').textContent = sourceReady ? 'Connesso' : displayedSource === 'keepa-web'
-      ? (state.keepaSessionConfirmed ? 'Verifica richiesta' : 'Accesso richiesto')
-      : (telegramReady ? 'Connesso' : state.telegramSessionExists ? 'Verifica account' : (config.telegramApiIdSet && config.telegramApiHashSet ? 'Accesso richiesto' : 'Da configurare'));
-    $('#amazonStatus').textContent = amazonReady ? 'Connesso' : state.amazonSessionConfirmed ? 'Verifica account' : 'Accesso richiesto';
-    $('#monitorStatus').textContent = state.monitorRunning ? (state.autoBuy ? 'In funzione · ordini attivi' : 'In funzione · prova') : 'Fermo';
-    $('#monitorBadge').innerHTML = state.monitorRunning ? '<span class="tiny-dot"></span>IN FUNZIONE' : '<span class="tiny-dot"></span>FERMO';
+    $('#sourceStatus').textContent = sourceReady ? tr('connected') : displayedSource === 'keepa-web'
+      ? (state.keepaSessionConfirmed ? tr('verificationRequired') : tr('accessRequired'))
+      : (state.telegramSessionExists ? tr('verificationRequired') : (config.telegramApiIdSet && config.telegramApiHashSet ? tr('accessRequired') : tr('setupRequired')));
+    $('#amazonStatus').textContent = amazonReady ? tr('connected') : state.amazonSessionConfirmed ? tr('verificationRequired') : tr('accessRequired');
+    $('#monitorStatus').textContent = state.monitorRunning ? (state.autoBuy ? tr('monitorRunningOrders') : tr('monitorRunningTest')) : tr('monitorStopped');
+    $('#monitorBadge').innerHTML = state.monitorRunning ? `<span class="tiny-dot"></span>${tr('monitorBadgeRunning')}` : `<span class="tiny-dot"></span>${tr('monitorBadgeStopped')}`;
     $('#monitorBadge').classList.toggle('running', state.monitorRunning);
     $('#monitorStartButton').classList.toggle('hidden', state.monitorRunning);
     $('#monitorStopButton').classList.toggle('hidden', !state.monitorRunning);
@@ -171,37 +342,37 @@ async function refresh() {
     setDot('#amazonStatusDot', amazonReady);
     setDot('#monitorStatusDot', state.monitorRunning);
     $('#sourceAccountDetail').textContent = displayedSource === 'keepa-web'
-      ? (keepaReady ? keepaAccount.displayName : state.keepaSessionConfirmed ? 'Sessione trovata · premi Accedi / verifica' : 'Account non verificato')
-      : (telegramReady ? telegramAccountText(telegramAccount) : state.telegramSessionExists ? 'Sessione trovata · premi Collega / verifica' : 'Account non verificato');
-    $('#amazonAccountDetail').textContent = amazonReady ? amazonAccount.displayName : state.amazonSessionConfirmed ? 'Sessione trovata · premi Accedi / verifica' : 'Account non verificato';
-    $('#telegramSessionBadge').textContent = telegramReady ? `✓ Connesso: ${telegramAccountText(telegramAccount)}` : state.telegramSessionExists ? 'Sessione presente · identità da verificare' : 'Sessione non collegata';
+      ? (keepaReady ? keepaAccount.displayName : state.keepaSessionConfirmed ? tr('sessionFoundVerify') : tr('accountNotVerified'))
+      : (telegramReady ? telegramAccountText(telegramAccount) : state.telegramSessionExists ? tr('sessionFoundVerify') : tr('accountNotVerified'));
+    $('#amazonAccountDetail').textContent = amazonReady ? amazonAccount.displayName : state.amazonSessionConfirmed ? tr('sessionFoundVerify') : tr('accountNotVerified');
+    $('#telegramSessionBadge').textContent = telegramReady ? tr('telegramConnected', { account: telegramAccountText(telegramAccount) }) : state.telegramSessionExists ? tr('telegramSessionNeedsVerification') : tr('telegramSessionNotConnected');
     $('#telegramSessionBadge').classList.toggle('connected', telegramReady);
-    $('#amazonSessionBadge').textContent = amazonReady ? `✓ Connesso: ${amazonAccount.displayName}` : state.amazonSessionConfirmed ? 'Sessione presente · identità da verificare' : 'Da collegare';
+    $('#amazonSessionBadge').textContent = amazonReady ? tr('amazonConnected', { account: amazonAccount.displayName }) : state.amazonSessionConfirmed ? tr('sessionFoundVerify') : tr('notConnected');
     $('#amazonSessionBadge').classList.toggle('connected', amazonReady);
-    $('#keepaSessionBadge').textContent = keepaReady ? `✓ Connesso: ${keepaAccount.displayName}` : state.keepaSessionConfirmed ? 'Sessione presente · verifica richiesta' : 'Sessione non collegata';
+    $('#keepaSessionBadge').textContent = keepaReady ? tr('keepaConnected', { account: keepaAccount.displayName }) : state.keepaSessionConfirmed ? tr('sessionFoundVerify') : tr('notConnected');
     $('#keepaSessionBadge').classList.toggle('connected', keepaReady);
     if (!configDirty) {
       setValueUnlessEditing('#senderId', config.keepaSenderId || '');
     }
     updateSourceChoice();
     updateTelegramCredentials(config);
-    $('#telegramApiId').placeholder = config.telegramApiIdSet ? 'Già configurato, lascia vuoto per mantenerlo' : 'Inserisci api_id';
-    $('#telegramApiHash').placeholder = config.telegramApiHashSet ? 'Già configurato, lascia vuoto per mantenerlo' : 'Inserisci api_hash';
+    $('#telegramApiId').placeholder = config.telegramApiIdSet ? tr('configuredLeaveBlank') : currentLanguage === 'it' ? 'Inserisci api_id' : 'Enter api_id';
+    $('#telegramApiHash').placeholder = config.telegramApiHashSet ? tr('configuredLeaveBlank') : currentLanguage === 'it' ? 'Inserisci api_hash' : 'Enter api_hash';
     const accessInProgress = Boolean(state.interactiveKind);
     $('#telegramLoginButton').disabled = accessInProgress;
     $('#keepaLoginButton').disabled = accessInProgress;
     $('#amazonLoginButton').disabled = accessInProgress;
     $('#monitorStartButton').disabled = configDirty || accessInProgress;
     $('#autoBuyEnableButton').disabled = configDirty || accessInProgress;
-    $('#telegramLoginButton').textContent = state.interactiveKind === 'telegram' ? 'Telegram in corso…' : 'Collega / verifica';
-    $('#keepaLoginButton').textContent = state.interactiveKind === 'keepa' ? 'Keepa in corso…' : 'Accedi / verifica';
-    $('#amazonLoginButton').textContent = state.interactiveKind === 'amazon' ? 'Amazon in corso…' : 'Accedi / verifica';
+    $('#telegramLoginButton').textContent = state.interactiveKind === 'telegram' ? tr('telegramInProgress') : state.telegramSessionExists ? tr('verifyAccount') : tr('linkTelegram');
+    $('#keepaLoginButton').textContent = state.interactiveKind === 'keepa' ? tr('keepaInProgress') : state.keepaSessionConfirmed ? tr('verifyAccount') : tr('loginKeepa');
+    $('#amazonLoginButton').textContent = state.interactiveKind === 'amazon' ? tr('amazonInProgress') : state.amazonSessionConfirmed ? tr('verifyAccount') : tr('loginAmazon');
     renderEvents(state.events || []);
     latestActivity = state.activity || [];
     renderActivity(latestActivity.filter((entry) => entry.time > hiddenThrough));
     updateInteractive(state);
   } catch (error) {
-    showToast(`Pannello non raggiungibile: ${error.message}`, true);
+    showToast(tr('panelUnavailable', { message: error.message }), true);
   }
 }
 
@@ -221,7 +392,7 @@ $('#configForm').addEventListener('submit', async (event) => {
     telegramCredentialsEditorOpen = false;
     $('#telegramApiId').value = '';
     $('#telegramApiHash').value = '';
-    showToast('Configurazione salvata sul dispositivo.');
+    showToast(tr('savedConfiguration'));
     await refresh();
   } catch (error) {
     showToast(error.message, true);
@@ -248,17 +419,17 @@ $('#telegramCredentialsToggle').addEventListener('click', () => {
 async function startLogin(kind) {
   try {
     const result = await api('/api/login/start', { method: 'POST', body: JSON.stringify({ kind }) });
-    const sourceName = kind === 'telegram' ? 'Telegram' : kind === 'amazon' ? 'Amazon' : 'Keepa';
+    const sourceName = kind === 'telegram' ? tr('sourceTelegramName') : kind === 'amazon' ? 'Amazon' : tr('sourceKeepaName');
     if (result.alreadyRunning) {
-      showToast(`${sourceName} è già in corso: completa il passaggio nel browser e premi Conferma.`);
+      showToast(tr('loginAlreadyRunning', { source: sourceName }));
     } else {
-      showToast(kind === 'telegram' ? 'Accesso Telegram avviato.' : `Finestra di accesso ${sourceName} aperta.`);
+      showToast(kind === 'telegram' ? tr('telegramLoginStarted') : tr('loginWindowOpened', { source: sourceName }));
     }
     await refresh();
   } catch (error) {
     if (/già attivo il passaggio/i.test(error.message)) {
-      const sourceName = kind === 'telegram' ? 'Telegram' : kind === 'amazon' ? 'Amazon' : 'Keepa';
-      showToast(`${sourceName} è già in attesa: completa il login e premi Conferma, oppure Annulla per ripartire.`);
+      const sourceName = kind === 'telegram' ? tr('sourceTelegramName') : kind === 'amazon' ? 'Amazon' : tr('sourceKeepaName');
+      showToast(tr('loginWaiting', { source: sourceName }));
       await refresh();
       return;
     }
@@ -277,7 +448,7 @@ $('#interactiveSend').addEventListener('click', async () => {
   } catch (error) { showToast(error.message, true); }
 });
 $('#interactiveEnter').addEventListener('click', async () => {
-  const isConfirmPrompt = /Amazon|Keepa|premi Invio/i.test($('#interactivePrompt').textContent);
+  const isConfirmPrompt = /premi (?:Invio|Conferma)|press (?:Enter|Confirm)/i.test($('#interactivePrompt').textContent);
   try {
     await api('/api/login/input', { method: 'POST', body: JSON.stringify({ value: isConfirmPrompt ? '' : $('#interactiveInput').value }) });
     $('#interactiveInput').value = '';
@@ -291,13 +462,13 @@ $('#interactiveStop').addEventListener('click', async () => {
 $('#monitorStartButton').addEventListener('click', async () => {
   try {
     await api('/api/monitor/start', { method: 'POST', body: '{}' });
-    showToast('Monitoraggio Keepa avviato.');
+    showToast(tr('monitoringStarted'));
     await refresh();
   } catch (error) { showToast(error.message, true); }
 });
 $('#monitorStopButton').addEventListener('click', async () => {
   await api('/api/monitor/stop', { method: 'POST', body: '{}' }).catch((error) => showToast(error.message, true));
-  showToast('Arresto del monitoraggio richiesto.');
+  showToast(tr('monitoringStopRequested'));
   await refresh();
 });
 
@@ -320,14 +491,14 @@ $('#autoBuyEnableButton').addEventListener('click', async () => {
   if (!accepted) return;
   try {
     await api('/api/auto-buy', { method: 'POST', body: JSON.stringify({ enabled: true }) });
-    showToast('Acquisto automatico abilitato.');
+    showToast(tr('autoBuyEnabled'));
     await refresh();
   } catch (error) { showToast(error.message, true); }
 });
 $('#autoBuyDisableButton').addEventListener('click', async () => {
   try {
     await api('/api/auto-buy', { method: 'POST', body: JSON.stringify({ enabled: false }) });
-    showToast('Acquisto automatico disattivato.');
+    showToast(tr('autoBuyDisabled'));
     await refresh();
   } catch (error) { showToast(error.message, true); }
 });
@@ -337,6 +508,12 @@ $('#clearLogButton').addEventListener('click', () => {
   renderActivity([]);
 });
 
+$('#languageToggle').addEventListener('click', async () => {
+  applyLanguage(currentLanguage === 'it' ? 'en' : 'it');
+  await refresh();
+});
+
+applyLanguage(currentLanguage);
 updateSourceChoice();
 refresh();
 setInterval(refresh, 2500);

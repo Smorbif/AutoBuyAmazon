@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1220">
-  <title>Keepa Buyer — Pannello</title>
+  <title data-i18n="documentTitle">Keepa Buyer — Pannello</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css">
 </head>
@@ -13,34 +13,35 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">K</div>
-        <div><strong>Keepa Buyer</strong><span>Amazon.it · Resale</span></div>
+        <div><strong>Keepa Buyer</strong><span data-i18n="brandSubtitle">Amazon Europa · Resale</span></div>
       </div>
-      <nav aria-label="Navigazione principale">
-        <a class="nav-item active" href="#overview"><span class="nav-icon">◫</span>Panoramica</a>
-        <a class="nav-item" href="#setup"><span class="nav-icon">⚙</span>Configurazione</a>
-        <a class="nav-item" href="#activity"><span class="nav-icon">≋</span>Attività</a>
+      <nav aria-label="Navigazione principale" data-i18n-aria="mainNavigation">
+        <a class="nav-item active" href="#overview"><span class="nav-icon">◫</span><span data-i18n="navOverview">Panoramica</span></a>
+        <a class="nav-item" href="#setup"><span class="nav-icon">⚙</span><span data-i18n="navSetup">Configurazione</span></a>
+        <a class="nav-item" href="#activity"><span class="nav-icon">≋</span><span data-i18n="navActivity">Attività</span></a>
       </nav>
       <div class="sidebar-bottom">
-        <div class="side-note"><span class="tiny-dot"></span><span>Elaborazione locale</span></div>
+        <div class="side-note"><span class="tiny-dot"></span><span data-i18n="localProcessing">Elaborazione locale</span></div>
         <div class="sidebar-version">Prima versione · 0.2</div>
       </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
-        <div class="breadcrumbs">Automazioni <span>/</span> <b>Acquisto Keepa</b></div>
+        <div class="breadcrumbs"><span data-i18n="breadcrumbAutomation">Automazioni</span> <span>/</span> <b data-i18n="breadcrumbKeepa">Acquisto Keepa</b></div>
         <div class="topbar-right">
           <span class="safe-pill" id="autoBuyStatus"><span class="tiny-dot"></span>Acquisto automatico disattivato</span>
-          <button class="icon-button" id="refreshButton" title="Aggiorna stato" aria-label="Aggiorna stato">↻</button>
+          <button class="language-toggle" id="languageToggle" type="button" aria-label="Passa all’inglese"><span class="language-flag" aria-hidden="true">🇬🇧</span><span id="languageToggleLabel">English</span></button>
+          <button class="icon-button" id="refreshButton" title="Aggiorna stato" aria-label="Aggiorna stato" data-i18n-title="refreshStatus" data-i18n-aria="refreshStatus">↻</button>
         </div>
       </header>
 
       <div class="page-wrap">
         <section class="hero" id="overview">
           <div>
-            <div class="eyebrow">MONITORAGGIO PREZZI</div>
-            <h1>Pronto a cogliere<br>un’offerta <em>Resale</em>.</h1>
-            <p>Scegli Telegram oppure il sito Keepa come fonte degli avvisi e collega il tuo account Amazon. Il programma controlla l’offerta e applica i limiti che hai impostato.</p>
+            <div class="eyebrow" data-i18n="heroEyebrow">MONITORAGGIO PREZZI</div>
+            <h1 data-i18n-html="heroTitle">Pronto a cogliere<br>un’offerta <em>Resale</em>.</h1>
+            <p data-i18n="heroDescription">Scegli Telegram oppure il sito Keepa come fonte degli avvisi e collega il tuo account Amazon. Il programma controlla l’offerta e applica i limiti che hai impostato.</p>
           </div>
           <div class="hero-illustration" aria-hidden="true">
             <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
@@ -49,7 +50,7 @@
           </div>
         </section>
 
-        <section class="status-grid" aria-label="Stato servizi">
+        <section class="status-grid" aria-label="Stato servizi" data-i18n-aria="serviceStatus">
           <article class="status-card">
             <div class="status-heading"><span id="sourceStatusIcon" class="status-icon telegram-icon">✈</span><span id="sourceStatusDot" class="status-dot"></span></div>
             <div id="sourceStatusLabel" class="status-label">TELEGRAM</div><div id="sourceStatus" class="status-value">Da collegare</div>
@@ -57,27 +58,27 @@
           </article>
           <article class="status-card">
             <div class="status-heading"><span class="status-icon amazon-icon">a</span><span id="amazonStatusDot" class="status-dot"></span></div>
-            <div class="status-label">AMAZON.IT</div><div id="amazonStatus" class="status-value">Accesso richiesto</div>
+            <div class="status-label" data-i18n="amazonEuropeLabel">AMAZON EUROPA</div><div id="amazonStatus" class="status-value">Accesso richiesto</div>
             <div id="amazonAccountDetail" class="status-detail">Account non verificato</div>
           </article>
           <article class="status-card status-card-wide">
             <div class="status-heading"><span class="status-icon radar-icon">◎</span><span id="monitorStatusDot" class="status-dot"></span></div>
             <div class="status-label">MONITORAGGIO</div><div id="monitorStatus" class="status-value">Fermo</div>
-            <div class="status-detail">Attiva gli acquisti automatici con il pulsante qui sotto</div>
+            <div class="status-detail" data-i18n="monitorStatusHint">Attiva gli acquisti automatici con il pulsante qui sotto</div>
           </article>
         </section>
 
         <section class="content-grid" id="setup">
           <article class="panel config-panel">
             <div class="panel-header">
-              <div><div class="eyebrow">01 · PREFERENZE</div><h2>Regole d’acquisto</h2></div>
-              <span class="step-badge">Salvate sul dispositivo</span>
+              <div><div class="eyebrow" data-i18n="preferencesEyebrow">01 · PREFERENZE</div><h2 data-i18n="purchaseRules">Regole d’acquisto</h2></div>
+              <span class="step-badge" data-i18n="savedOnDevice">Salvate sul dispositivo</span>
             </div>
-            <p class="panel-intro">Keepa decide quando avvisarti in base al prezzo e alla tipologia che hai tracciato. Qui imposti la sorgente e i collegamenti necessari.</p>
+            <p class="panel-intro" data-i18n="configIntro">Keepa decide quando avvisarti in base al prezzo e alla tipologia che hai tracciato. Qui imposti la sorgente e i collegamenti necessari.</p>
             <form id="configForm">
               <div class="field-row source-row">
-                <label class="field"><span>Fonte degli avvisi Keepa</span><select id="notificationSource"><option value="telegram">Telegram · messaggi Keepa</option><option value="keepa-web">Sito Keepa · Notifiche recenti</option></select></label>
-                <div id="keepaSourceHelp" class="source-help hidden">Usa il tuo accesso al sito Keepa nel browser. Non serve l’API Keepa; la sessione viene salvata in locale.</div>
+                <label class="field"><span data-i18n="notificationSource">Fonte degli avvisi Keepa</span><select id="notificationSource"><option value="telegram" data-i18n="telegramSource">Telegram · messaggi Keepa</option><option value="keepa-web" data-i18n="keepaWebSource">Sito Keepa · Notifiche recenti</option></select></label>
+                <div id="keepaSourceHelp" class="source-help hidden" data-i18n="keepaSourceHelp">Usa il tuo accesso al sito Keepa nel browser. Non serve l’API Keepa; la sessione viene salvata in locale.</div>
               </div>
               <div id="telegramFields">
                 <div class="telegram-credentials-status">
@@ -86,76 +87,76 @@
                 </div>
                 <div id="telegramCredentialsEditor" class="hidden">
                 <div class="field-row">
-                  <label class="field"><span>api_id Telegram</span><input id="telegramApiId" inputmode="numeric" autocomplete="off" placeholder="Già configurato, se lasciato vuoto"></label>
-                  <label class="field"><span>api_hash Telegram</span><input id="telegramApiHash" type="password" autocomplete="new-password" placeholder="Già configurato, se lasciato vuoto"></label>
+                  <label class="field"><span data-i18n="telegramApiIdLabel">api_id Telegram</span><input id="telegramApiId" inputmode="numeric" autocomplete="off" placeholder="Già configurato, se lasciato vuoto" data-i18n-placeholder="configuredLeaveBlank"></label>
+                  <label class="field"><span data-i18n="telegramApiHashLabel">api_hash Telegram</span><input id="telegramApiHash" type="password" autocomplete="new-password" placeholder="Già configurato, se lasciato vuoto" data-i18n-placeholder="configuredLeaveBlank"></label>
                 </div>
                 </div>
                 <div class="field-row">
-                  <label class="field"><span>ID mittente Keepa su Telegram <small>rilevato automaticamente</small></span><input id="senderId" autocomplete="off" placeholder="Verrà rilevato dalla cronologia o dal prossimo avviso"></label>
+                  <label class="field"><span><span data-i18n="senderIdLabel">ID mittente Keepa su Telegram</span> <small data-i18n="autoDetected">rilevato automaticamente</small></span><input id="senderId" autocomplete="off" placeholder="Verrà rilevato dalla cronologia o dal prossimo avviso" data-i18n-placeholder="senderPlaceholder"><small class="sender-hint" data-i18n="senderAutoHelp">Cerca nei 50 avvisi Keepa recenti; se non ne trova, apprende il mittente dal primo avviso valido in modalità prova.</small></label>
                 </div>
               </div>
               <div class="form-footer">
-                <div class="privacy-note"><span>▣</span><span>Sessioni e configurazione restano sul PC o server che ospita il programma.</span></div>
-                <button class="button button-primary" type="submit"><span>Salva configurazione</span><span aria-hidden="true">→</span></button>
+                <div class="privacy-note"><span>▣</span><span data-i18n="privacyNote">Sessioni e configurazione restano sul PC o server che ospita il programma.</span></div>
+                <button class="button button-primary" type="submit"><span data-i18n="saveConfiguration">Salva configurazione</span><span aria-hidden="true">→</span></button>
               </div>
             </form>
           </article>
 
           <aside class="panel limits-panel">
-            <div class="eyebrow">02 · PROTEZIONI</div><h2>Limiti attivi</h2>
-            <div class="limit-line"><div class="limit-check">✓</div><div><strong>Marketplace italiano</strong><span>Solo Amazon.it</span></div></div>
-            <div class="limit-line"><div class="limit-check">✓</div><div><strong>Prezzo massimo</strong><span>Non supera il prezzo nell’avviso</span></div></div>
-            <div class="limit-line"><div class="limit-check">✓</div><div><strong>Tipologia Keepa</strong><span>Nessun filtro condizione duplicato</span></div></div>
-            <div class="limit-line"><div class="limit-check">✓</div><div><strong>Carrello controllato</strong><span>Un solo articolo per ordine</span></div></div>
-            <div class="notice-box"><span class="notice-icon">i</span><span>Ogni avviso Keepa valido avvia il controllo dell’ASIN. Il totale dell’ordine, spedizione inclusa, non può superare il prezzo dell’avviso; condizione e venditore non vengono filtrati una seconda volta.</span></div>
+            <div class="eyebrow" data-i18n="protectionEyebrow">02 · PROTEZIONI</div><h2 data-i18n="activeLimits">Limiti attivi</h2>
+            <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="marketplaceLimit">Marketplace europeo</strong><span data-i18n="marketplaceLimitDetail">Segue il link Keepa; Regno Unito escluso</span></div></div>
+            <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="maxPrice">Prezzo massimo</strong><span data-i18n="maxPriceDetail">Non supera il prezzo nell’avviso</span></div></div>
+            <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="keepaCondition">Tipologia Keepa</strong><span data-i18n="keepaConditionDetail">Nessun filtro condizione duplicato</span></div></div>
+            <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="checkedCart">Carrello controllato</strong><span data-i18n="checkedCartDetail">Un solo articolo per ordine</span></div></div>
+            <div class="notice-box"><span class="notice-icon">i</span><span data-i18n="orderNotice">Ogni avviso Keepa valido avvia il controllo dell’ASIN. Il totale dell’ordine, spedizione inclusa, non può superare il prezzo dell’avviso; condizione e venditore non vengono filtrati una seconda volta.</span></div>
           </aside>
         </section>
 
         <section class="panel connection-panel">
           <div class="panel-header">
-            <div><div class="eyebrow">03 · COLLEGAMENTI</div><h2>Accedi ai tuoi account</h2></div>
-            <span class="step-badge">Accesso iniziale e verifica</span>
+            <div><div class="eyebrow" data-i18n="connectionsEyebrow">03 · COLLEGAMENTI</div><h2 data-i18n="connectAccounts">Accedi ai tuoi account</h2></div>
+            <span class="step-badge" data-i18n="initialAccess">Accesso iniziale e verifica</span>
           </div>
           <div class="connection-cards">
             <article id="telegramConnectionCard" class="connection-card">
               <div class="connection-brand telegram-brand">✈</div>
-              <div class="connection-copy"><h3>Collega Telegram</h3><p>Accedi una volta per permettere al programma di leggere gli avvisi Keepa.</p><span id="telegramSessionBadge" class="connection-state">Sessione non collegata</span></div>
-              <button class="button button-secondary" id="telegramLoginButton">Collega / verifica</button>
+              <div class="connection-copy"><h3 data-i18n="telegramCardTitle">Collega Telegram</h3><p data-i18n="telegramCardDescription">Accedi una volta per permettere al programma di leggere gli avvisi Keepa.</p><span id="telegramSessionBadge" class="connection-state">Sessione non collegata</span></div>
+              <button class="button button-secondary" id="telegramLoginButton">Collega Telegram</button>
             </article>
             <article id="keepaConnectionCard" class="connection-card hidden">
               <div class="connection-brand keepa-brand">K</div>
-              <div class="connection-copy"><h3>Collega il sito Keepa</h3><p>Accedi nel browser che si apre; poi premi Conferma nel pannello. Il programma sorveglia “Notifiche recenti”.</p><span id="keepaSessionBadge" class="connection-state">Sessione non collegata</span></div>
-              <button class="button button-secondary" id="keepaLoginButton">Accedi / verifica</button>
+              <div class="connection-copy"><h3 data-i18n="keepaCardTitle">Collega il sito Keepa</h3><p data-i18n="keepaCardDescription">Accedi nel browser che si apre; poi premi Conferma nel pannello. Il programma sorveglia “Notifiche recenti”.</p><span id="keepaSessionBadge" class="connection-state">Sessione non collegata</span></div>
+              <button class="button button-secondary" id="keepaLoginButton">Accedi al sito Keepa</button>
             </article>
-            <article class="connection-card">
+            <article id="amazonConnectionCard" class="connection-card">
               <div class="connection-brand amazon-brand">a</div>
-              <div class="connection-copy"><h3>Accedi ad Amazon.it</h3><p>Si apre una finestra separata. Accedi lì, poi conferma dal pannello per leggere il nome account.</p><span id="amazonSessionBadge" class="connection-state">Da collegare</span></div>
-              <button class="button button-secondary" id="amazonLoginButton">Accedi / verifica</button>
+              <div class="connection-copy"><h3 data-i18n="amazonCardTitle">Accedi ad Amazon Europa</h3><p data-i18n="amazonCardDescription">Si apre una finestra separata. Accedi lì, poi conferma dal pannello per leggere il nome account.</p><span id="amazonSessionBadge" class="connection-state">Da collegare</span></div>
+              <button class="button button-secondary" id="amazonLoginButton">Accedi ad Amazon</button>
             </article>
           </div>
           <div id="interactiveArea" class="interactive-area hidden">
             <div class="interactive-title"><span class="pulse"></span><span id="interactiveTitle">Passaggio in corso</span></div>
             <div id="interactivePrompt" class="interactive-prompt">Segui le istruzioni visualizzate qui.</div>
-            <div class="interactive-controls"><input id="interactiveInput" type="password" autocomplete="off" placeholder="Inserisci il valore richiesto"><button class="button button-primary" id="interactiveSend">Invia</button><button class="button button-quiet" id="interactiveEnter">Invio</button><button class="button button-quiet" id="interactiveStop">Annulla</button></div>
+            <div class="interactive-controls"><input id="interactiveInput" type="password" autocomplete="off" placeholder="Inserisci il valore richiesto" data-i18n-placeholder="interactiveValuePlaceholder"><button class="button button-primary" id="interactiveSend" data-i18n="send">Invia</button><button class="button button-quiet" id="interactiveEnter" data-i18n="enter">Invio</button><button class="button button-quiet" id="interactiveStop" data-i18n="cancel">Annulla</button></div>
           </div>
         </section>
 
         <section class="monitor-panel" id="activity">
-          <div class="monitor-copy"><div class="eyebrow">04 · CONTROLLO</div><h2>Avvia il monitoraggio</h2><p id="monitorDescription">La configurazione salvata verifica le offerte senza inviare ordini. Dopo la prima prova puoi controllare i risultati qui.</p></div>
-          <div class="monitor-actions"><span id="monitorBadge" class="monitor-badge"><span class="tiny-dot"></span>FERMO</span><button id="monitorStartButton" class="button button-primary">Avvia monitoraggio <span>→</span></button><button id="monitorStopButton" class="button button-danger hidden">Ferma</button><button id="autoBuyEnableButton" class="button button-warning">Abilita acquisto automatico</button><button id="autoBuyDisableButton" class="button button-danger hidden">Disattiva acquisto</button></div>
+          <div class="monitor-copy"><div class="eyebrow" data-i18n="controlEyebrow">04 · CONTROLLO</div><h2 data-i18n="startMonitoring">Avvia il monitoraggio</h2><p id="monitorDescription">La configurazione salvata verifica le offerte senza inviare ordini. Dopo la prima prova puoi controllare i risultati qui.</p></div>
+          <div class="monitor-actions"><span id="monitorBadge" class="monitor-badge"><span class="tiny-dot"></span>FERMO</span><button id="monitorStartButton" class="button button-primary"><span data-i18n="startMonitoringButton">Avvia monitoraggio</span><span>→</span></button><button id="monitorStopButton" class="button button-danger hidden" data-i18n="stopMonitoring">Ferma</button><button id="autoBuyEnableButton" class="button button-warning" data-i18n="enableAutoBuy">Abilita acquisto automatico</button><button id="autoBuyDisableButton" class="button button-danger hidden" data-i18n="disableAutoBuy">Disattiva acquisto</button></div>
         </section>
 
         <section class="activity-grid">
           <article class="panel activity-panel">
-            <div class="panel-header"><div><div class="eyebrow">ULTIMI EVENTI</div><h2>Avvisi elaborati</h2></div><span id="eventCount" class="count-badge">0</span></div>
-            <div id="eventsList" class="events-list"><div class="empty-state"><span>◷</span><strong>Nessun avviso elaborato</strong><small>Gli eventi appariranno qui quando arriva una notifica Keepa.</small></div></div>
+            <div class="panel-header"><div><div class="eyebrow" data-i18n="latestEvents">ULTIMI EVENTI</div><h2 data-i18n="processedAlerts">Avvisi elaborati</h2></div><span id="eventCount" class="count-badge">0</span></div>
+            <div id="eventsList" class="events-list"><div class="empty-state"><span>◷</span><strong data-i18n="noAlerts">Nessun avviso elaborato</strong><small data-i18n="alertsWillAppear">Gli eventi appariranno qui quando arriva una notifica Keepa.</small></div></div>
           </article>
           <article class="panel activity-panel log-panel">
-            <div class="panel-header"><div><div class="eyebrow">STATO DEL SISTEMA</div><h2>Registro attività</h2></div><button class="text-button" id="clearLogButton">Pulisci</button></div>
-            <div id="activityList" class="activity-list"><div class="empty-log">In attesa di attività…</div></div>
+            <div class="panel-header"><div><div class="eyebrow" data-i18n="systemStatus">STATO DEL SISTEMA</div><h2 data-i18n="activityLog">Registro attività</h2></div><button class="text-button" id="clearLogButton" data-i18n="clear">Pulisci</button></div>
+            <div id="activityList" class="activity-list"><div class="empty-log" data-i18n="waitingActivity">In attesa di attività…</div></div>
           </article>
         </section>
-        <footer class="page-footer"><span>Keepa Buyer · Amazon.it</span><span>Password e dati carta non vengono inviati al webhook.</span></footer>
+        <footer class="page-footer"><span data-i18n="footerProduct">Keepa Buyer · Amazon Europa</span><span data-i18n="footerPrivacy">Password e dati carta non vengono inviati al webhook.</span></footer>
       </div>
     </main>
   </div>
@@ -164,15 +165,15 @@
       <div class="confirm-dialog-heading">
         <span class="confirm-dialog-icon" aria-hidden="true">!</span>
         <div>
-          <div class="eyebrow">ATTENZIONE</div>
-          <h2 id="autoBuyConfirmTitle">Abilitare gli acquisti automatici?</h2>
+          <div class="eyebrow" data-i18n="warning">ATTENZIONE</div>
+          <h2 id="autoBuyConfirmTitle" data-i18n="confirmAutoBuyTitle">Abilitare gli acquisti automatici?</h2>
         </div>
       </div>
-      <p id="autoBuyConfirmDescription">Ogni nuova notifica Keepa valida può inviare un ordine usando indirizzo e pagamento selezionati su Amazon. Il programma non filtra venditore o condizione e non ripete gli avvisi già elaborati.</p>
-      <div id="autoBuyConfirmNote" class="confirm-dialog-note">Prima di attivare, controlla offerta, account Amazon, prezzo massimo e metodo di pagamento.</div>
+      <p id="autoBuyConfirmDescription" data-i18n="confirmAutoBuyDescription">Ogni nuova notifica Keepa valida può inviare un ordine usando indirizzo e pagamento selezionati su Amazon. Il programma non filtra venditore o condizione e non ripete gli avvisi già elaborati.</p>
+      <div id="autoBuyConfirmNote" class="confirm-dialog-note" data-i18n="confirmAutoBuyNote">Prima di attivare, controlla offerta, account Amazon, prezzo massimo e metodo di pagamento.</div>
       <div class="confirm-dialog-actions">
-        <button type="button" class="button button-secondary" id="cancelAutoBuyConfirm" autofocus>Annulla</button>
-        <button type="button" class="button button-warning" id="acceptAutoBuyConfirm">Abilita acquisti</button>
+        <button type="button" class="button button-secondary" id="cancelAutoBuyConfirm" autofocus data-i18n="cancel">Annulla</button>
+        <button type="button" class="button button-warning" id="acceptAutoBuyConfirm" data-i18n="confirmEnablePurchases">Abilita acquisti</button>
       </div>
     </div>
   </dialog>

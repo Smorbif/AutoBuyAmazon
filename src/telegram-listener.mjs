@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { TelegramClient } from 'teleproto';
 import { StringSession } from 'teleproto/sessions';
 import { NewMessage } from 'teleproto/events';
-import { settings, persistEnvValue } from './common.mjs';
+import { settings, persistEnvValue, amazonMarketplaceFromUrl, marketplaceCurrency, extractMarketplaceMinor, formatMarketplacePrice } from './common.mjs';
 
 if (!settings.telegramApiId || !settings.telegramApiHash) {
   throw new Error('Imposta TELEGRAM_API_ID e TELEGRAM_API_HASH nel file .env.');
@@ -21,54 +21,58 @@ const client = new TelegramClient(new StringSession(session), settings.telegramA
 await client.connect();
 await client.getMe();
 
-function parseCents(raw) {
-  const value = String(raw || '').trim();
-  const separator = Math.max(value.lastIndexOf(','), value.lastIndexOf('.'));
-  if (separator < 0) return Number(value.replace(/\D/g, '')) * 100;
-  const whole = value.slice(0, separator).replace(/\D/g, '') || '0';
-  const decimals = value.slice(separator + 1).replace(/\D/g, '').padEnd(2, '0').slice(0, 2);
-  return Number(whole) * 100 + Number(decimals || '0');
-}
-
-function asinFromAmazonUrl(rawUrl) {
+function amazonProductFromUrl(rawUrl) {
   let url;
   try {
     url = new URL(rawUrl);
   } catch {
     return null;
   }
-  if (!(url.hostname === 'amazon.it' || url.hostname.endsWith('.amazon.it'))) return null;
-  const match = url.pathname.match(/\/(?:dp|product|offer-listing|aw\/d)\/([A-Z0-9]{10})(?:\/|$)/i);
-  return match?.[1]?.toUpperCase() || null;
+  const marketplaceHost = amazonMarketplaceFromUrl(url.toString());
+  if (!marketplaceHost) return null;
+  const match = url.pathname.match(/\/(?:dp|product|offer-listing|aw\/d|gp\/product)\/([A-Z0-9]{10})(?:\/|$)/i);
+  return match ? { asin: match[1].toUpperCase(), marketplaceHost } : null;
 }
 
 async function amazonUrlFromMessage(message) {
+  const candidates = [];
+  const add = (value) => {
+    if (typeof value === 'string' && value.trim()) candidates.push(value.trim().replace(/[),.!?]+$/, ''));
+  };
   const rawButtons = message.replyMarkup?.rows?.flatMap((row) => row.buttons || []) || [];
-  const rawButton = rawButtons.find((item) => {
+  for (const item of rawButtons) {
     const text = item.text || '';
     const url = item.url || item.type?.url || item.button?.url || item.button?.type?.url;
-    return /vai su amazon/i.test(text) && url;
-  });
-  if (rawButton) {
-    return rawButton.url || rawButton.type?.url || rawButton.button?.url || rawButton.button?.type?.url;
+    if (/vai su amazon|go to amazon/i.test(text)) add(url);
   }
 
-  const buttons = await message.getButtons().catch(() => undefined);
-  const button = buttons?.flat().find((item) => /vai su amazon/i.test(item.text || '') && item.url);
-  if (button?.url) return button.url;
+  let buttons;
+  try {
+    if (typeof message.getButtons === 'function') buttons = await message.getButtons();
+  } catch {}
+  for (const button of buttons?.flat() || []) {
+    if (/vai su amazon|go to amazon/i.test(button.text || '')) add(button.url);
+  }
 
-  const entities = message.entities || [];
-  const entity = entities.find((item) => item.url && /amazon\.it/i.test(item.url));
-  if (entity?.url) return entity.url;
-  const inlineLink = String(message.message || '').match(/https?:\/\/[^\s]+amazon\.it[^\s]*/i);
-  return inlineLink?.[0] || null;
+  for (const entity of message.entities || []) add(entity.url);
+  for (const match of String(message.message || '').matchAll(/https?:\/\/[^\s<>()[\]]+/gi)) add(match[0]);
+
+  const parsed = candidates.map(amazonProductFromUrl).filter(Boolean);
+  const unique = new Map(parsed.map((product) => [`${product.marketplaceHost}:${product.asin}`, product]));
+  return unique.size === 1 ? [...unique.values()][0] : null;
 }
 
-function parseKeepaAlert(text) {
-  if (!/ha raggiunto il prezzo che desideri/i.test(text)) return null;
-  const priceMatch = text.match(/Prezzo attuale:\s*([\d.,]+)\s*€/i);
+function parseKeepaAlert(text, expectedCurrency = null) {
+  if (!/(?:ha raggiunto il prezzo che desideri|has reached your desired price|reached your desired price|hat den gew[uü]nschten preis erreicht|a atteint le prix souhait[eé]|ha alcanzado el precio deseado|heeft de gewenste prijs bereikt|har n[aå]tt ditt [oö]nskade pris)/i.test(text)) return null;
+  const label = text.match(/(?:prezzo attuale|current price|aktueller preis|prix actuel|precio actual|huidige prijs|aktuellt pris|aktuell pris|aktualna cena)\s*:?\s*/i);
+  if (!label) return null;
+  const tail = text.slice(label.index + label[0].length, label.index + label[0].length + 70);
+  const priceMatch = tail.match(/(?:€|zł|PLN|kr|SEK)\s*[\d][\d\s.,]*|[\d][\d\s.,]*\s*(?:€|zł|PLN|kr|SEK)/i);
   if (!priceMatch) return null;
-  const cents = parseCents(priceMatch[1]);
+  const symbol = priceMatch[0].match(/€|zł|PLN|kr|SEK/i)?.[0] || '';
+  const currency = /zł|PLN/i.test(symbol) ? 'PLN' : /kr|SEK/i.test(symbol) ? 'SEK' : 'EUR';
+  if (expectedCurrency && currency !== expectedCurrency) return null;
+  const cents = extractMarketplaceMinor(priceMatch[0], currency);
   if (!Number.isSafeInteger(cents) || cents < 1) return null;
   return cents;
 }
@@ -99,14 +103,19 @@ console.log('Ascolto locale delle notifiche Keepa Telegram.');
 
 async function forwardAlert(message) {
   const text = String(message.message || '');
-  const maxItemCents = parseKeepaAlert(text);
-  if (maxItemCents === null) return;
+  if (parseKeepaAlert(text) === null) return;
 
   const senderId = String(message.senderId || '');
-  const productUrl = await amazonUrlFromMessage(message);
-  const asin = productUrl ? asinFromAmazonUrl(productUrl) : null;
-  if (!asin) {
-    console.warn(`Keepa alert ${message.id} ignorato: link Amazon.it/ASIN non trovato.`);
+  const product = await amazonUrlFromMessage(message);
+  if (!product) {
+    console.warn(`Keepa alert ${message.id} ignorato: link Amazon europeo supportato/ASIN assente o ambiguo.`);
+    return;
+  }
+  const { asin, marketplaceHost } = product;
+  const currency = marketplaceCurrency(marketplaceHost);
+  const priceCents = parseKeepaAlert(text, currency);
+  if (priceCents === null) {
+    console.warn(`Keepa alert ${message.id} ignorato: prezzo nella valuta ${currency} assente o non riconosciuto.`);
     return;
   }
 
@@ -127,8 +136,9 @@ async function forwardAlert(message) {
   const trigger = {
     notificationId,
     asin,
-    maxItemCents,
-    maxTotalCents: maxItemCents
+    maxItemCents: priceCents,
+    maxTotalCents: priceCents,
+    marketplaceHost
   };
   const response = await fetch(`http://127.0.0.1:${settings.port}/trigger`, {
     method: 'POST',
@@ -142,7 +152,7 @@ async function forwardAlert(message) {
     const body = await response.text();
     throw new Error(`Purchase runner ha risposto ${response.status}: ${body}`);
   }
-  console.log(`Keepa alert inoltrato: sender ${senderId}, ASIN ${asin}, tetto articolo ${(maxItemCents / 100).toFixed(2)} €. ` +
+  console.log(`Keepa alert inoltrato: sender ${senderId}, ASIN ${asin}, marketplace ${marketplaceHost}, tetto articolo ${formatMarketplacePrice(priceCents, currency)}. ` +
     `Stato: ${(await response.json()).status}.`);
 }
 

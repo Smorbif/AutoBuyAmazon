@@ -1,12 +1,12 @@
 # Keepa Buyer
 
-Pannello grafico in italiano per usare gli avvisi Keepa come trigger di un tentativo d’acquisto su Amazon.it. Puoi scegliere una delle due fonti: messaggi Keepa ricevuti su Telegram, oppure la pagina Keepa **Tracking → Notifiche recenti**. Il secondo metodo usa il sito e non richiede Keepa API. Playwright controlla il browser Amazon autenticato e, se selezionato, quello del sito Keepa.
+Pannello grafico in italiano e inglese per usare gli avvisi Keepa come trigger di un tentativo d’acquisto sui marketplace Amazon europei. Il marketplace viene ricavato dal link Amazon nell’avviso; Amazon.co.uk è escluso. Sono supportati amazon.de, amazon.fr, amazon.it, amazon.es, amazon.nl, amazon.com.be, amazon.ie, amazon.pl e amazon.se. Puoi scegliere una delle due fonti: messaggi Keepa ricevuti su Telegram, oppure la pagina Keepa **Tracking → Notifiche recenti**. Il secondo metodo usa il sito e non richiede Keepa API. Playwright controlla il browser Amazon autenticato e, se selezionato, quello del sito Keepa. [Elenco ufficiale degli Amazon Europe store](https://sell.amazon.de/en/programme/verkaufen-in-ganz-europa).
 
 ## Cosa fa
 
 1. Legge i nuovi avvisi Keepa da Telegram oppure controlla periodicamente **Notifiche recenti** nel sito Keepa.
-2. Ricava ASIN e prezzo dal messaggio o dalla riga dell’avviso e inoltra i dati al runner.
-3. Cerca le offerte Amazon dello stesso ASIN entro quel tetto di prezzo.
+2. Ricava ASIN, prezzo e marketplace dal messaggio o dal link nella riga dell’avviso e inoltra i dati al runner.
+3. Cerca le offerte sullo stesso marketplace Amazon, nello stesso ASIN e nella valuta dell’avviso.
 4. Se l’acquisto automatico è attivo, controlla carrello e totale e prova a inviare l’ordine.
 
 Keepa resta la fonte dei criteri di tracking e dell’avviso. Come richiesto, il runner non applica un secondo filtro per venditore o condizione: seleziona l’offerta più economica dell’ASIN entro il prezzo dell’avviso. Se vuoi che il venditore o la condizione siano vincolanti anche nel checkout, il codice attuale non li verifica.
@@ -19,14 +19,14 @@ Il prezzo dell’avviso è anche il limite massimo del totale dell’ordine, spe
 2. Installa Node.js 20 o superiore.
 3. Fai doppio clic su `KeepaBuyer.exe`.
 4. Scegli **Telegram · messaggi Keepa** oppure **Sito Keepa · Notifiche recenti** e salva.
-5. Per Telegram, premi **Inserisci** e salva `api_id` e `api_hash`, poi collega Telegram. Il programma cerca l’ultimo avviso Keepa nella cronologia recente e compila l’ID mittente; se non lo trova, lo rileva al primo avviso Keepa valido mentre il monitoraggio è in prova. Per il sito Keepa, premi **Accedi / verifica**, accedi nella finestra che si apre e premi **Conferma** nel pannello quando è visibile la pagina Tracking.
-6. Premi **Accedi / verifica** per Amazon. Il pannello mostra lo stato della sessione Amazon verificata.
+5. Per Telegram, premi **Inserisci** e salva `api_id` e `api_hash`, poi collega Telegram. Il programma cerca fino a 50 avvisi Keepa recenti nella cronologia e compila l’ID mittente; se non trova un avviso valido, lo rileva dal primo avviso ricevuto in modalità prova. Per il sito Keepa, accedi nella finestra che si apre e premi **Conferma** nel pannello quando è visibile la pagina Tracking.
+6. Premi **Accedi ad Amazon** per la verifica iniziale. Quando l’account è già connesso, il pulsante diventa **Verifica account**.
 7. Avvia il monitoraggio in modalità prova e controlla gli eventi. La prima lettura del sito Keepa serve da riferimento e ignora gli avvisi già visibili: saranno presi in considerazione solo quelli che compaiono dopo l’avvio.
 8. Quando hai verificato il flusso, premi **Abilita acquisto automatico** e conferma nel popup del pannello. Gli eventi già elaborati in prova non vengono ripetuti.
 
 L’acquisto automatico è disattivato all’avvio. Per Telegram richiede la sessione Telegram, la verifica Amazon e l’ID mittente Keepa. Per il sito Keepa richiede la sessione Keepa e la verifica Amazon. Cambiare fonte spegne sempre gli acquisti automatici, che dovranno essere riabilitati dopo aver controllato la nuova modalità. La conferma appare come popup interno al pannello.
 
-Le credenziali `api_id`/`api_hash` hanno un indicatore: verde quando sono salvate, rosso quando vanno inserite. **Modifica** o **Inserisci** apre i campi senza mostrare i valori già salvati; lo stato di accesso all’account Telegram resta indicato separatamente nella scheda di collegamento.
+Le credenziali `api_id`/`api_hash` hanno un indicatore: verde quando sono salvate, rosso quando vanno inserite. **Modifica** o **Inserisci** apre i campi senza mostrare i valori già salvati; lo stato dell’account Telegram resta indicato separatamente. La pagina ha un pulsante con bandiera in alto per passare da italiano a inglese; la lingua scelta viene salvata nel browser.
 
 ### Sessioni e profili browser
 
@@ -76,15 +76,15 @@ Non caricare `.env` o `data/` su GitHub: possono contenere credenziali, cookie e
 
 ## Controlli e limiti del checkout
 
-- Accetta link Amazon.it e ASIN validi.
-- Usa il prezzo attuale dell’avviso sia come tetto dell’articolo sia come tetto del totale ordine, spedizione inclusa.
+- Accetta link dei marketplace Amazon europei supportati e ASIN validi; il Regno Unito è escluso. Telegram usa il link del pulsante Amazon Keepa. Keepa web elabora solo righe con un link Amazon europeo univoco per l’ASIN.
+- Usa il prezzo attuale dell’avviso nella valuta del marketplace sia come tetto dell’articolo sia come tetto del totale ordine, spedizione inclusa. Sono gestiti EUR, PLN e SEK.
 - Controlla che il carrello contenga un solo articolo e che l’ASIN corrisponda all’avviso.
 - Usa l’indirizzo e il metodo di pagamento mostrati da Amazon nel profilo autenticato; il programma non li seleziona né li verifica.
 - Non compila CAPTCHA, MFA, password, indirizzi o dati carta e non recupera automaticamente pagamenti rifiutati.
 - Se dopo il click finale non riconosce una conferma, registra l’evento come fermato. Controlla **I miei ordini** prima di riprovare: Amazon potrebbe aver creato un ordine in sospeso.
 - Ogni ID evento viene gestito una sola volta. Anche un evento in prova o fermato non viene ripetuto se la sorgente lo rinvia con lo stesso ID.
 
-Amazon e Keepa possono modificare le proprie pagine. I selettori del checkout e il lettore delle notifiche Keepa dal sito non sono ancora stati verificati con gli account dell’utente o con un ordine reale; prima di abilitare gli acquisti controlla gli eventi in modalità prova.
+Amazon e Keepa possono modificare le proprie pagine. I selettori del checkout, i link per ciascun marketplace e il lettore delle notifiche Keepa dal sito non sono ancora stati verificati con gli account dell’utente o con un ordine reale. Il profilo Amazon è condiviso tra i marketplace; se il marketplace dell’avviso richiede un nuovo accesso, il tentativo si ferma prima dell’ordine. Prima di abilitare gli acquisti controlla gli avvisi in modalità prova sui paesi che usi.
 
 ## API locale
 
@@ -94,9 +94,10 @@ Il server è accessibile solo su localhost. L’endpoint `POST /trigger` richied
 {
   "notificationId": "keepa-event-id",
   "asin": "B0XXXXXXXX",
+  "marketplaceHost": "www.amazon.de",
   "maxItemCents": 12000,
-  "maxTotalCents": 12500
+  "maxTotalCents": 12000
 }
 ```
 
-I prezzi sono in centesimi di euro. Sono disponibili anche `GET /health` e `GET /events/<notificationId>`.
+`maxItemCents` e `maxTotalCents` sono unità minori della valuta del marketplace (ad esempio centesimi EUR, grosz PLN o öre SEK). Sono disponibili anche `GET /health` e `GET /events/<notificationId>`.
