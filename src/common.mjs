@@ -88,7 +88,8 @@ export function amazonBaseUrl(marketplaceHost = settings.amazonHost) {
 export function extractMarketplaceMinor(value, currency) {
   const text = String(value || '');
   const symbol = currency === 'PLN' ? '(?:zł|PLN)' : currency === 'SEK' ? '(?:kr|SEK)' : '€';
-  const amountPattern = String.raw`([\d\s\u00a0.,]+)`;
+  // L'importo deve iniziare con una cifra: "€18.47" non va letto come " " + "€".
+  const amountPattern = String.raw`(\d[\d\s\u00a0.,]*)`;
   const before = text.match(new RegExp(`${symbol}\\s*${amountPattern}`, 'i'));
   const after = text.match(new RegExp(`${amountPattern}\\s*${symbol}`, 'i'));
   const raw = (after || before)?.[1];

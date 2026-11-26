@@ -85,6 +85,7 @@ async function saveJournal() {
 }
 
 const OFFER_READY_SELECTOR = '#aod-pinned-offer, #aod-offer, .olpOffer, #add-to-cart-button, #outOfStock, #availability';
+const USED_CONDITION = /used|gebraucht|usato|occasion|segunda mano|reacondicionado|ricondizionato|reconditionn|renewed|generalüberholt|tweedehands|gebruikt|używany|begagnad/i;
 const ADD_TO_CART_NAME = /aggiungi al carrello|add to (?:cart|basket)|in den einkaufswagen|ajouter au panier|añadir a (?:la )?cesta|in winkelwagen|do koszyka|kundvagnen/i;
 
 async function cardPriceCents(card, currency) {
@@ -160,6 +161,8 @@ async function detectOffer(page, trigger) {
   let cheapest = null;
   for (const item of cards) {
     const { priceCard, actionCard, fallbackPriceCard } = item;
+    const condition = await priceCard.locator('#aod-offer-heading').first().innerText({ timeout: 500 }).catch(() => '');
+    if (USED_CONDITION.test(condition)) continue; // solo prodotti nuovi
     let cents = await cardPriceCents(priceCard, trigger.currency);
     if (cents === null && fallbackPriceCard) cents = await cardPriceCents(fallbackPriceCard, trigger.currency);
     if (cents === null) continue;
@@ -212,6 +215,14 @@ async function runTrigger(trigger) {
 
   if (/\/ap\/signin|\/signin/i.test(page.url())) throw new Error('Sessione Amazon non autenticata; esegui npm run login.');
   if (amazonMarketplaceFromUrl(page.url()) !== trigger.marketplaceHost) throw new Error('Navigazione fuori dal marketplace indicato dall’avviso Keepa; nessun acquisto eseguito.');
+
+  const accountLabel = await page.locator('#nav-link-accountList-nav-line-1').first().innerText({ timeout: 3000 }).catch(() => '');
+  const signedOut = /^\s*(?:hello,?\s*sign in|ciao,?\s*accedi|hallo,?\s*anmelden|bonjour,?\s*identifiez-vous|hola,?\s*identif[ií]cate|sign in|accedi|anmelden)/i.test(accountLabel);
+  if (signedOut) {
+    const message = `Non risulti collegato ad Amazon su ${trigger.marketplaceHost}: accedi a questo marketplace dal pannello prima di attivare gli acquisti.`;
+    if (settings.autoBuy) throw new Error(message);
+    console.warn(`[${trigger.notificationId}] ${message}`);
+  }
 
   const offer = await detectOffer(page, trigger);
   console.log(`[${trigger.notificationId}] Offerta su ${trigger.marketplaceHost}: ${formatMarketplacePrice(offer.cents, trigger.currency)} entro il prezzo dell’avviso Keepa.`);
