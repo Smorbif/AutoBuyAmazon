@@ -84,29 +84,76 @@ async function saveJournal() {
   await writeFile(journalPath, JSON.stringify(journal, null, 2), 'utf8');
 }
 
-async function detectOffer(page, trigger) {
-  const selectors = ['#aod-offer', '.olpOffer', '[data-csa-c-offer-id]'];
-  let cards = [];
-  for (const selector of selectors) {
-    const count = await page.locator(selector).count().catch(() => 0);
-    if (count > 0) {
-      cards = await page.locator(selector).all();
-      break;
+const OFFER_READY_SELECTOR = '#aod-pinned-offer, #aod-offer, .olpOffer, #add-to-cart-button, #outOfStock, #availability';
+const ADD_TO_CART_NAME = /aggiungi al carrello|add to (?:cart|basket)|in den einkaufswagen|ajouter au panier|añadir a (?:la )?cesta|in winkelwagen|do koszyka|kundvagnen/i;
+
+async function cardPriceCents(card, currency) {
+  // Prima il prezzo da pagare, poi qualsiasi prezzo non barrato.
+  for (const selector of ['.priceToPay .a-offscreen', '.apexPriceToPay .a-offscreen', '[id^="aod-price-"] .a-offscreen', '.a-price:not(.a-text-price) .a-offscreen']) {
+    const value = await card.locator(selector).first().textContent({ timeout: 1000 }).catch(() => '');
+    const cents = extractMarketplaceMinor(value, currency);
+    if (cents !== null) return cents;
+  }
+  const text = await card.innerText().catch(() => '');
+  return extractMarketplaceMinor(text, currency);
+}
+
+async function offerCards(page) {
+  // Pannello "Tutte le offerte" (AOD): offerta in evidenza + altre offerte.
+  const aod = await page.locator('#aod-pinned-offer, #aod-offer').all().catch(() => []);
+  if (aod.length) return aod;
+  const legacy = await page.locator('.olpOffer, [data-csa-c-offer-id]').all().catch(() => []);
+  if (legacy.length) return legacy;
+  // Pagina prodotto senza pannello: usa la buy box principale.
+  for (const selector of ['#apex_desktop', '#desktop_buybox', '#buybox', '#centerCol']) {
+    const box = page.locator(selector).first();
+    if (await box.count().catch(() => 0)) {
+      const buyBox = page.locator('#desktop_buybox, #buybox').first();
+      return [{ priceCard: box, actionCard: (await buyBox.count().catch(() => 0)) ? buyBox : page.locator('body') }];
     }
   }
-  if (cards.length === 0) throw new Error('Amazon non ha mostrato offerte riconoscibili; nessun acquisto eseguito.');
+  return [];
+}
+
+async function saveOfferDebug(page, trigger) {
+  try {
+    const base = path.join(settings.dataDir, `offer-debug-${trigger.asin}`);
+    await page.screenshot({ path: `${base}.png`, fullPage: false });
+    await writeFile(`${base}.html`, await page.content(), 'utf8');
+    return `${base}.png`;
+  } catch {
+    return null;
+  }
+}
+
+async function detectOffer(page, trigger) {
+  await page.waitForSelector(OFFER_READY_SELECTOR, { timeout: 20000 }).catch(() => {});
+  // Il pannello AOD si carica in modo asincrono dopo la pagina prodotto.
+  await page.waitForSelector('#aod-pinned-offer, #aod-offer', { timeout: 8000 }).catch(() => {});
+  const cards = await offerCards(page);
+  if (cards.length === 0) {
+    const debug = await saveOfferDebug(page, trigger);
+    throw new Error(`Amazon non ha mostrato offerte riconoscibili; nessun acquisto eseguito.${debug ? ` Schermata salvata in ${debug}.` : ''}`);
+  }
 
   const matches = [];
-  for (const card of cards) {
-    const text = await card.innerText().catch(() => '');
-    const cents = extractMarketplaceMinor(text, trigger.currency);
+  let cheapest = null;
+  for (const item of cards) {
+    const priceCard = item.priceCard || item;
+    const actionCard = item.actionCard || item;
+    const cents = await cardPriceCents(priceCard, trigger.currency);
     if (cents === null) continue;
+    if (cheapest === null || cents < cheapest) cheapest = cents;
     if (cents > trigger.maxItemCents) continue;
-    matches.push({ card, text, cents });
+    matches.push({ card: actionCard, cents });
   }
 
   matches.sort((a, b) => a.cents - b.cents);
-  if (matches.length === 0) throw new Error('Nessuna offerta del prodotto è disponibile entro il prezzo indicato da Keepa.');
+  if (matches.length === 0) {
+    const seen = cheapest === null ? 'nessun prezzo leggibile' : `migliore offerta vista ${formatMarketplacePrice(cheapest, trigger.currency)}`;
+    if (cheapest === null) await saveOfferDebug(page, trigger);
+    throw new Error(`Nessuna offerta del prodotto è disponibile entro il prezzo indicato da Keepa (${seen}).`);
+  }
   return matches[0];
 }
 
@@ -140,7 +187,7 @@ async function runTrigger(trigger) {
   const browserContext = await getContext();
   const page = browserContext.pages()[0] || await browserContext.newPage();
   const marketplaceUrl = amazonBaseUrl(trigger.marketplaceHost);
-  const offersUrl = `${marketplaceUrl}/gp/offer-listing/${trigger.asin}`;
+  const offersUrl = `${marketplaceUrl}/dp/${trigger.asin}?aod=1&psc=1`;
   await page.goto(offersUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
   if (/\/ap\/signin|\/signin/i.test(page.url())) throw new Error('Sessione Amazon non autenticata; esegui npm run login.');
@@ -151,7 +198,8 @@ async function runTrigger(trigger) {
 
   if (!settings.autoBuy) return { status: 'dry_run', offerCents: offer.cents };
 
-  const addButton = offer.card.getByRole('button', { name: /aggiungi al carrello|add to (?:cart|basket)|in den einkaufswagen|ajouter au panier|añadir a (?:la )?cesta|in winkelwagen|do koszyka|kundvagnen/i }).first();
+  let addButton = offer.card.getByRole('button', { name: ADD_TO_CART_NAME }).first();
+  if (!(await addButton.count().catch(() => 0))) addButton = offer.card.locator('input[name="submit.addToCart"], #add-to-cart-button').first();
   if (!(await addButton.count().catch(() => 0))) throw new Error('Nessun pulsante Aggiungi al carrello riconosciuto dentro l’offerta; nessun ordine eseguito.');
   await addButton.click();
   await page.waitForTimeout(1200);
