@@ -2,9 +2,10 @@ import { readFile } from 'node:fs/promises';
 import { TelegramClient } from 'teleproto';
 import { StringSession } from 'teleproto/sessions';
 import { NewMessage } from 'teleproto/events';
-import { settings, persistEnvValue, amazonMarketplaceFromUrl, marketplaceCurrency, formatMarketplacePrice } from './common.mjs';
+import { settings, persistEnvValue, marketplaceCurrency, formatMarketplacePrice } from './common.mjs';
 import { parseKeepaAlert } from './keepa-alert.mjs';
 import { findKeepaSenderInHistory } from './keepa-sender.mjs';
+import { pickAmazonProduct } from './amazon-link.mjs';
 
 if (!settings.telegramApiId || !settings.telegramApiHash) {
   throw new Error('Imposta TELEGRAM_API_ID e TELEGRAM_API_HASH nel file .env.');
@@ -23,29 +24,20 @@ const client = new TelegramClient(new StringSession(session), settings.telegramA
 await client.connect();
 await client.getMe();
 
-function amazonProductFromUrl(rawUrl) {
-  let url;
-  try {
-    url = new URL(rawUrl);
-  } catch {
-    return null;
-  }
-  const marketplaceHost = amazonMarketplaceFromUrl(url.toString());
-  if (!marketplaceHost) return null;
-  const match = url.pathname.match(/\/(?:dp|product|offer-listing|aw\/d|gp\/product)\/([A-Z0-9]{10})(?:\/|$)/i);
-  return match ? { asin: match[1].toUpperCase(), marketplaceHost } : null;
-}
-
 async function amazonUrlFromMessage(message) {
   const candidates = [];
-  const add = (value) => {
-    if (typeof value === 'string' && value.trim()) candidates.push(value.trim().replace(/[),.!?]+$/, ''));
+  const add = (value, primary = false) => {
+    if (typeof value !== 'string' || !value.trim()) return;
+    const url = value.trim().replace(/[),.!?]+$/, '');
+    const existing = candidates.find((c) => c.url === url);
+    if (existing) existing.primary ||= primary;
+    else candidates.push({ url, primary });
   };
+  const isAmazonButton = (text) => /amazon/i.test(text || '');
   const rawButtons = message.replyMarkup?.rows?.flatMap((row) => row.buttons || []) || [];
   for (const item of rawButtons) {
-    const text = item.text || '';
     const url = item.url || item.type?.url || item.button?.url || item.button?.type?.url;
-    if (/vai su amazon|go to amazon/i.test(text)) add(url);
+    add(url, isAmazonButton(item.text));
   }
 
   let buttons;
@@ -53,15 +45,18 @@ async function amazonUrlFromMessage(message) {
     if (typeof message.getButtons === 'function') buttons = await message.getButtons();
   } catch {}
   for (const button of buttons?.flat() || []) {
-    if (/vai su amazon|go to amazon/i.test(button.text || '')) add(button.url);
+    add(button.url, isAmazonButton(button.text));
   }
 
-  for (const entity of message.entities || []) add(entity.url);
-  for (const match of String(message.message || '').matchAll(/https?:\/\/[^\s<>()[\]]+/gi)) add(match[0]);
+  const text = String(message.message || '');
+  for (const entity of message.entities || []) {
+    if (entity.url) add(entity.url);
+    else if (/Url/i.test(entity.className || '') && Number.isInteger(entity.offset)) add(text.slice(entity.offset, entity.offset + entity.length));
+  }
+  for (const match of text.matchAll(/https?:\/\/[^\s<>()[\]]+/gi)) add(match[0]);
+  for (const match of text.matchAll(/(?<![\w/])(?:www\.)?(?:amazon\.[a-z.]{2,6}|amzn\.(?:eu|to))\/[^\s<>()[\]]+/gi)) add(`https://${match[0]}`);
 
-  const parsed = candidates.map(amazonProductFromUrl).filter(Boolean);
-  const unique = new Map(parsed.map((product) => [`${product.marketplaceHost}:${product.asin}`, product]));
-  return unique.size === 1 ? [...unique.values()][0] : null;
+  return pickAmazonProduct(candidates);
 }
 
 async function detectKeepaSenderFromHistory() {
@@ -85,9 +80,11 @@ async function forwardAlert(message) {
   if (parseKeepaAlert(text) === null) return;
 
   const senderId = String(message.senderId || '');
-  const product = await amazonUrlFromMessage(message);
+  const { product, reason, tried, found } = await amazonUrlFromMessage(message);
   if (!product) {
-    console.warn(`Keepa alert ${message.id} ignorato: link Amazon europeo supportato/ASIN assente o ambiguo.`);
+    console.warn(`Keepa alert ${message.id} ignorato: ${reason}.` +
+      (found ? ` Prodotti trovati: ${found.join(', ')}.` : '') +
+      (tried.length ? ` Link esaminati: ${tried.join(' | ')}` : ''));
     return;
   }
   const { asin, marketplaceHost } = product;
