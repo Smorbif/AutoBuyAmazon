@@ -30,7 +30,7 @@ Leggere gli avvisi Keepa via Telegram oppure dalla pagina Keepa Tracking → Not
 
 - Pannello web in italiano e inglese con selettore a bandiera nell’intestazione; la lingua scelta resta salvata nel browser.
 - Scelta salvata tra Telegram e sito Keepa; il cambio sorgente disabilita gli acquisti automatici finché l’utente non li riabilita.
-- Rilevamento automatico di `KEEPA_SENDER_ID`: alla verifica Telegram cerca gli avvisi Keepa recenti nella cronologia; se non ne trova, salva il mittente del primo avviso valido ricevuto durante la prova.
+- Rilevamento automatico di `KEEPA_SENDER_ID`: alla verifica Telegram legge fino a 50 messaggi nelle chat il cui nome/username contiene Keepa (fino a 10 chat tra i primi 100 dialoghi), poi ripiega sulla ricerca globale in più lingue. Se trova un solo mittente lo salva quando il campo è vuoto; se l’ID esistente è diverso lo segnala senza sovrascrivere il valore configurato.
 - Stato credenziali API Telegram nel pannello, con pallino verde quando `api_id`/`api_hash` sono salvati e rosso quando vanno inseriti; pulsante **Modifica/Inserisci** apre i campi.
 - Rimosso il margine spedizione: il totale ordine, inclusa la spedizione, deve restare entro il prezzo dell’avviso.
 - Login Keepa in browser Playwright con profilo persistente `data/keepa-profile` e indicatore di sessione confermata.
@@ -85,7 +85,7 @@ Leggere gli avvisi Keepa via Telegram oppure dalla pagina Keepa Tracking → Not
 - La scelta Amazon non confronta venditore o condizione con i dati Keepa; considera tutte le offerte riconosciute dell’ASIN e prende la più economica entro il prezzo limite.
 - Il login Amazon viene verificato nel profilo browser condiviso. L’accesso incrociato ai marketplace europei e il formato dei prezzi locali non sono stati provati; se il marketplace richiede un nuovo login, l’ordine viene fermato.
 - Il parser Telegram riconosce le principali traduzioni della frase Keepa, legge `Prezzo attuale`/equivalenti e richiede un link di prodotto valido da uno store Amazon europeo supportato. Amazon.co.uk non viene accettato.
-- La ricerca storica Telegram cerca fino a 50 avvisi Keepa recenti; se non trova un mittente, l’apprendimento dal primo avviso è consentito solo in modalità prova. Se è attivo l’acquisto automatico e l’ID non è ancora verificato, il listener si ferma senza inviare ordini.
+- La ricerca storica Telegram legge la chat Keepa prima della ricerca globale; il match richiede un messaggio entrante non inoltrato con frase di avviso, prezzo e mittente riconosciuti. Se trova più mittenti non sceglie automaticamente. Se non trova un mittente, l’apprendimento dal primo avviso è consentito solo in modalità prova. Se è attivo l’acquisto automatico e l’ID non è ancora verificato, il listener si ferma senza inviare ordini.
 - Il lettore Keepa web cerca righe visibili contenenti ASIN, prezzo e link Amazon univoco. I dati mancanti, ambigui o senza marketplace identificato vengono saltati. Il layout non è stato provato su una sessione Keepa reale.
 - La connessione Keepa conferma che la pagina Tracking è accessibile e salva la sessione; non legge né mostra email/nome dell’account Keepa.
 - Il profilo browser Keepa è persistente e contiene cookie/sessioni. Non caricare `data/` su GitHub o condividerla.

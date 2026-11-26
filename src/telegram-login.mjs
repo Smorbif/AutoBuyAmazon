@@ -4,6 +4,7 @@ import { stdin, stdout } from 'node:process';
 import { TelegramClient } from 'teleproto';
 import { StringSession } from 'teleproto/sessions';
 import { settings, persistEnvValue } from './common.mjs';
+import { findKeepaSenderInHistory } from './keepa-sender.mjs';
 
 if (!settings.telegramApiId || !settings.telegramApiHash) {
   throw new Error('Imposta TELEGRAM_API_ID e TELEGRAM_API_HASH nel file .env.');
@@ -37,27 +38,26 @@ const account = {
   lastName: me.lastName || ''
 };
 await writeFile(`${settings.dataDir}/telegram-account.json`, JSON.stringify(account, null, 2), 'utf8');
-if (!settings.keepaSenderId) {
-  try {
-    const recentMessages = await client.getMessages(undefined, {
-      search: 'ha raggiunto il prezzo che desideri',
-      limit: 50
-    });
-    const alert = recentMessages.find((message) => {
-      const text = String(message.message || '');
-      return !message.out && !message.fwdFrom && message.senderId && /ha raggiunto il prezzo che desideri/i.test(text) &&
-        /Prezzo attuale:\s*[\d.,]+\s*€/i.test(text);
-    });
-    if (alert) {
-      const senderId = String(alert.senderId);
-      await persistEnvValue('KEEPA_SENDER_ID', senderId);
-      console.log(`KEEP_BUY_KEEPA_SENDER_ID=${senderId}`);
-    } else {
-      console.log('Nessun avviso Keepa recente trovato nella cronologia; il mittente verrà rilevato al prossimo avviso valido.');
-    }
-  } catch (error) {
-    console.warn(`Lettura cronologia Keepa non riuscita; il mittente verrà rilevato al prossimo avviso valido: ${error.message}`);
+const configuredSenderId = settings.keepaSenderId;
+try {
+  const detection = await findKeepaSenderInHistory(client);
+  if (detection.senderId && !configuredSenderId) {
+    await persistEnvValue('KEEPA_SENDER_ID', detection.senderId);
+    console.log(`Mittente Keepa trovato nella ${detection.source} e salvato.`);
+    console.log(`KEEP_BUY_KEEPA_SENDER_ID=${detection.senderId}`);
+  } else if (detection.senderId && configuredSenderId === detection.senderId) {
+    console.log(`ID mittente Keepa verificato nella ${detection.source}.`);
+  } else if (detection.senderId && configuredSenderId) {
+    console.warn('Il mittente trovato nella cronologia è diverso da quello configurato; il valore esistente non è stato sostituito.');
+  } else if (detection.ambiguous) {
+    console.log('Trovati più mittenti Keepa nella cronologia; nessun ID è stato scelto automaticamente.');
+  } else if (!configuredSenderId) {
+    console.log('Nessun avviso Keepa valido trovato nella cronologia; il mittente verrà rilevato dal primo avviso valido in modalità prova.');
+  } else {
+    console.log('Cronologia consultata: ID configurato conservato, nessun avviso Keepa riconoscibile trovato.');
   }
+} catch (error) {
+  console.warn(`Lettura cronologia Keepa non riuscita; il mittente verrà rilevato dal primo avviso valido in modalità prova: ${error.message}`);
 }
 const accountLabel = [account.firstName, account.lastName].filter(Boolean).join(' ') || `ID ${account.id}`;
 console.log(`Telegram collegato: ${accountLabel}${account.username ? ` (@${account.username})` : ''}.`);

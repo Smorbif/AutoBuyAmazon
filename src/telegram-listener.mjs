@@ -2,7 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { TelegramClient } from 'teleproto';
 import { StringSession } from 'teleproto/sessions';
 import { NewMessage } from 'teleproto/events';
-import { settings, persistEnvValue, amazonMarketplaceFromUrl, marketplaceCurrency, extractMarketplaceMinor, formatMarketplacePrice } from './common.mjs';
+import { settings, persistEnvValue, amazonMarketplaceFromUrl, marketplaceCurrency, formatMarketplacePrice } from './common.mjs';
+import { parseKeepaAlert } from './keepa-alert.mjs';
+import { findKeepaSenderInHistory } from './keepa-sender.mjs';
 
 if (!settings.telegramApiId || !settings.telegramApiHash) {
   throw new Error('Imposta TELEGRAM_API_ID e TELEGRAM_API_HASH nel file .env.');
@@ -62,40 +64,17 @@ async function amazonUrlFromMessage(message) {
   return unique.size === 1 ? [...unique.values()][0] : null;
 }
 
-function parseKeepaAlert(text, expectedCurrency = null) {
-  if (!/(?:ha raggiunto il prezzo che desideri|has reached your desired price|reached your desired price|hat den gew[uü]nschten preis erreicht|a atteint le prix souhait[eé]|ha alcanzado el precio deseado|heeft de gewenste prijs bereikt|har n[aå]tt ditt [oö]nskade pris)/i.test(text)) return null;
-  const label = text.match(/(?:prezzo attuale|current price|aktueller preis|prix actuel|precio actual|huidige prijs|aktuellt pris|aktuell pris|aktualna cena)\s*:?\s*/i);
-  if (!label) return null;
-  const tail = text.slice(label.index + label[0].length, label.index + label[0].length + 70);
-  const priceMatch = tail.match(/(?:€|zł|PLN|kr|SEK)\s*[\d][\d\s.,]*|[\d][\d\s.,]*\s*(?:€|zł|PLN|kr|SEK)/i);
-  if (!priceMatch) return null;
-  const symbol = priceMatch[0].match(/€|zł|PLN|kr|SEK/i)?.[0] || '';
-  const currency = /zł|PLN/i.test(symbol) ? 'PLN' : /kr|SEK/i.test(symbol) ? 'SEK' : 'EUR';
-  if (expectedCurrency && currency !== expectedCurrency) return null;
-  const cents = extractMarketplaceMinor(priceMatch[0], currency);
-  if (!Number.isSafeInteger(cents) || cents < 1) return null;
-  return cents;
-}
-
 async function detectKeepaSenderFromHistory() {
   if (settings.keepaSenderId) return settings.keepaSenderId;
-  try {
-    const recentMessages = await client.getMessages(undefined, {
-      search: 'ha raggiunto il prezzo che desideri',
-      limit: 50
-    });
-    const alert = recentMessages.find((message) =>
-      !message.out && !message.fwdFrom && message.senderId && parseKeepaAlert(message.message) !== null
-    );
-    if (!alert) return '';
-    const senderId = String(alert.senderId);
-    await persistEnvValue('KEEPA_SENDER_ID', senderId);
-    console.log(`KEEP_BUY_KEEPA_SENDER_ID=${senderId}`);
-    return senderId;
-  } catch (error) {
-    console.warn(`Lettura cronologia Keepa non riuscita: ${error.message}`);
+  const detection = await findKeepaSenderInHistory(client);
+  if (!detection.senderId) {
+    if (detection.ambiguous) console.warn('Più mittenti Keepa trovati nella cronologia; nessun ID è stato scelto automaticamente.');
     return '';
   }
+  await persistEnvValue('KEEPA_SENDER_ID', detection.senderId);
+  console.log(`Mittente Keepa trovato nella ${detection.source}.`);
+  console.log(`KEEP_BUY_KEEPA_SENDER_ID=${detection.senderId}`);
+  return detection.senderId;
 }
 
 if (!settings.keepaSenderId) await detectKeepaSenderFromHistory();

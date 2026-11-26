@@ -19,7 +19,7 @@ Il prezzo dell’avviso è anche il limite massimo del totale dell’ordine, spe
 2. Installa Node.js 20 o superiore.
 3. Fai doppio clic su `KeepaBuyer.exe`.
 4. Scegli **Telegram · messaggi Keepa** oppure **Sito Keepa · Notifiche recenti** e salva.
-5. Per Telegram, premi **Inserisci** e salva `api_id` e `api_hash`, poi collega Telegram. Il programma cerca fino a 50 avvisi Keepa recenti nella cronologia e compila l’ID mittente; se non trova un avviso valido, lo rileva dal primo avviso ricevuto in modalità prova. Per il sito Keepa, accedi nella finestra che si apre e premi **Conferma** nel pannello quando è visibile la pagina Tracking.
+5. Per Telegram, premi **Inserisci** e salva `api_id` e `api_hash`, poi collega Telegram. Il programma controlla fino a 50 messaggi nelle chat chiamate Keepa tra i dialoghi recenti, poi usa la ricerca globale Telegram in più lingue. Se trova un solo mittente, salva l’ID quando il campo è vuoto; se rileva un ID configurato diverso, lo segnala senza sovrascriverlo. Se non trova corrispondenze, può apprendere il mittente dal primo avviso valido in modalità prova. Per il sito Keepa, accedi nella finestra che si apre e premi **Conferma** nel pannello quando è visibile la pagina Tracking.
 6. Premi **Accedi ad Amazon** per la verifica iniziale. Quando l’account è già connesso, il pulsante diventa **Verifica account**.
 7. Avvia il monitoraggio in modalità prova e controlla gli eventi. La prima lettura del sito Keepa serve da riferimento e ignora gli avvisi già visibili: saranno presi in considerazione solo quelli che compaiono dopo l’avvio.
 8. Quando hai verificato il flusso, premi **Abilita acquisto automatico** e conferma nel popup del pannello. Gli eventi già elaborati in prova non vengono ripetuti.
