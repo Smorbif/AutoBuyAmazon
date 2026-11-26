@@ -1,7 +1,7 @@
 // Condizione dell'offerta tracciata su Keepa (dal testo dell'avviso) e confronto
 // con le offerte mostrate da Amazon nel pannello "Tutte le offerte".
 
-export const CONDITION_KINDS = ['any', 'new', 'amazon', 'used', 'warehouse', 'refurbished', 'collectible'];
+export const CONDITION_KINDS = ['any', 'buybox', 'buybox_used', 'new', 'amazon', 'used', 'warehouse', 'refurbished', 'collectible'];
 export const USED_GRADES = ['like_new', 'very_good', 'good', 'acceptable'];
 
 const GRADE_PATTERNS = {
@@ -12,6 +12,8 @@ const GRADE_PATTERNS = {
 };
 
 const KEEPA_PATTERNS = [
+  ['buybox_used', /buy\s*box.*(?:usato|used|gebraucht|occasion|usado)|(?:usato|used|gebraucht|occasion|usado).*buy\s*box/i],
+  ['buybox', /buy\s*box/i],
   ['warehouse', /warehouse|retourenkauf|seconda mano amazon|amazon seconde main|segunda mano de amazon/i],
   ['refurbished', /ricondizionat|refurbished|renewed|generalüberholt|reconditionn|reacondicionad|gereviseerd|odnowion|rekonditionerad/i],
   ['collectible', /da collezione|collectible|sammlerst|de collection|coleccionable|verzamel|kolekcjonersk|samlarobjekt/i],
@@ -44,6 +46,12 @@ function classify(text) {
  * Restituisce { kind: 'any' } se non trova nulla: in quel caso le offerte non vengono filtrate.
  */
 export function parseKeepaCondition(text) {
+  // Formato Keepa Telegram: "il prodotto '<titolo>' <tipo di prezzo> su amazon.es ha raggiunto il prezzo che desideri".
+  const typed = [...String(text || '').matchAll(/['’"”]\s*([^'’"”\n]{1,60}?)\s+(?:su|on|auf|sur|en|op|na|på)\s+(?:www\.)?amazon\.[a-z.]+/gi)].pop();
+  if (typed) {
+    const found = classify(typed[1]);
+    if (found) return { ...found, label: typed[1].trim() };
+  }
   const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const priceLine = lines.find((line) => /prezzo attuale|current price|aktueller preis|prix actuel|precio actual|huidige prijs|aktuellt pris|aktualna cena/i.test(line));
   if (priceLine) {
@@ -75,7 +83,7 @@ export function normalizeCondition(input) {
 }
 
 export function describeCondition(condition) {
-  const names = { any: 'qualsiasi', new: 'nuovo', amazon: 'nuovo venduto da Amazon', used: 'usato', warehouse: 'Amazon Warehouse', refurbished: 'ricondizionato', collectible: 'da collezione' };
+  const names = { any: 'qualsiasi', buybox: 'Buy Box (offerta in evidenza)', buybox_used: 'Buy Box usato', new: 'nuovo', amazon: 'nuovo venduto da Amazon', used: 'usato', warehouse: 'Amazon Warehouse', refurbished: 'ricondizionato', collectible: 'da collezione' };
   const grades = { like_new: 'come nuovo', very_good: 'ottime condizioni', good: 'buone condizioni', acceptable: 'accettabile' };
   return condition.grade ? `${names[condition.kind]} (${grades[condition.grade]} o migliore)` : names[condition.kind];
 }
@@ -100,6 +108,8 @@ export function classifyAmazonOffer(heading, seller) {
 
 export function offerMatchesCondition(offer, wanted) {
   if (!wanted || wanted.kind === 'any') return true;
+  if (wanted.kind === 'buybox') return Boolean(offer.featured) && offer.kind === 'new';
+  if (wanted.kind === 'buybox_used') return offer.kind === 'used' && (Boolean(offer.featured) || offer.warehouse);
   if (wanted.kind === 'new') return offer.kind === 'new';
   if (wanted.kind === 'amazon') return offer.kind === 'new' && offer.soldByAmazon;
   if (wanted.kind === 'refurbished' || wanted.kind === 'collectible') return offer.kind === wanted.kind;

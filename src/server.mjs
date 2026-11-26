@@ -110,7 +110,7 @@ async function offerCards(page) {
   if (await pinned.count().catch(() => 0)) {
     // Il prezzo dell'offerta in evidenza può stare fuori dal suo contenitore (#aod-price-0).
     const pinnedPrice = page.locator('#aod-price-0').first();
-    cards.push({ priceCard: pinned, sellerCard: pinned, fallbackPriceCard: (await pinnedPrice.count().catch(() => 0)) ? pinnedPrice : null, actionCard: pinned });
+    cards.push({ priceCard: pinned, sellerCard: pinned, featured: true, fallbackPriceCard: (await pinnedPrice.count().catch(() => 0)) ? pinnedPrice : null, actionCard: pinned });
   }
   for (const card of await page.locator('#aod-offer').all().catch(() => [])) cards.push({ priceCard: card, sellerCard: card, actionCard: card });
   if (!cards.length) {
@@ -167,7 +167,7 @@ async function detectOffer(page, trigger) {
       ? await page.locator('#merchantInfoFeature_feature_div #sellerProfileTriggerId, #merchantInfoFeature_feature_div .offer-display-feature-text-message, #merchant-info').first().innerText({ timeout: 500 }).catch(() => '')
       : await (item.sellerCard || priceCard).locator('#aod-offer-soldBy a, #aod-offer-soldBy .a-col-right').first().innerText({ timeout: 500 })
         .catch(() => (item.sellerCard || priceCard).locator('#aod-offer-soldBy').first().innerText({ timeout: 500 }).catch(() => ''));
-    const offerCondition = classifyAmazonOffer(heading, seller);
+    const offerCondition = { ...classifyAmazonOffer(heading, seller), featured: Boolean(item.featured || item.buyBox) };
     if (!offerMatchesCondition(offerCondition, trigger.condition)) {
       skippedByCondition += 1;
       continue;
