@@ -77,6 +77,7 @@ async function getContext() {
       headless: settings.headless,
       viewport: { width: 1440, height: 1000 }
     });
+    context.on('close', () => { context = null; });
   }
   return context;
 }
@@ -239,7 +240,16 @@ async function ensureSingleTargetInCart(page, trigger) {
 
 async function runTrigger(trigger) {
   const browserContext = await getContext();
-  const page = browserContext.pages()[0] || await browserContext.newPage();
+  // Ogni avviso usa una scheda nuova, chiusa alla fine: il bot torna in attesa senza pagine Amazon aperte.
+  const page = await browserContext.newPage();
+  try {
+    return await runTriggerOnPage(page, trigger);
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+async function runTriggerOnPage(page, trigger) {
   const marketplaceUrl = amazonBaseUrl(trigger.marketplaceHost);
   const offersUrl = `${marketplaceUrl}/dp/${trigger.asin}?aod=1&psc=1`;
   await page.goto(offersUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -309,12 +319,43 @@ async function runTrigger(trigger) {
   }
   if (!(await submit.count().catch(() => 0))) throw new Error('Pulsante finale non riconosciuto; ordine non inviato.');
   await submit.click();
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
   await page.waitForTimeout(2500);
+
+  const declined = await handleDeclinedPayment(page);
+  if (declined) {
+    console.warn(`[${trigger.notificationId}] Ordine ${declined.orderId || ''} creato ma pagamento rifiutato dalla banca: ${declined.saved ? 'salvato con "completa più tardi"' : 'pulsante "completa più tardi" non trovato'}. Completa o annulla l’ordine su Amazon.`);
+    return { status: 'payment_declined', orderId: declined.orderId, saved: declined.saved, offerCents: offer.cents, finalTotalCents: finalTotal };
+  }
+
   const confirmation = normalizeText(await page.locator('body').innerText().catch(() => ''));
   if (!/ordine ricevuto|ordine effettuato|order placed|order received|thank you|bestellung (?:aufgegeben|abgeschlossen)|commande (?:passée|confirmée)|pedido (?:realizado|confirmado)|bestelling geplaatst|zam[oó]wienie (?:złożone|zrealizowane)|best[aä]llning (?:skickad|bekr[aä]ftad)/i.test(confirmation)) {
     throw new Error('Click finale inviato ma conferma ordine non riconosciuta: controlla Amazon prima di ritentare.');
   }
   return { status: 'ordered', offerCents: offer.cents, finalTotalCents: finalTotal };
+}
+
+const DECLINED_TEXT = /bank declined|payment (?:was )?declined|banca ha rifiutato|pagamento (?:è stato )?rifiutato|zahlung (?:wurde )?abgelehnt|bank hat .*abgelehnt|paiement (?:a été )?refus|banque a refus|pago (?:ha sido )?rechazado|banco ha rechazado|betaling (?:is )?geweigerd|płatność (?:została )?odrzucona|betalningen (?:har )?nekats/i;
+const FINISH_LATER_TEXT = /save this order and finish later|finish later|salva (?:questo |l['’])?ordine e (?:completa|termina|finisci)|completa(?:lo)? più tardi|später abschließen|bestellung speichern|terminer plus tard|enregistrer (?:cette|la) commande|finalizar (?:más tarde|despu[eé]s)|guardar (?:este |el )?pedido|later afronden|dokończ później|slutför senare/i;
+
+// Pagina "La banca ha rifiutato il pagamento": l'ordine esiste già. Salva e completa più tardi, senza ritentare.
+async function handleDeclinedPayment(page) {
+  const url = page.url();
+  const body = await page.locator('body').innerText().catch(() => '');
+  if (!/\/cpe\/revisepayments|revise.?payment/i.test(url) && !DECLINED_TEXT.test(body)) return null;
+  const orderId = (() => {
+    try { return new URL(url).searchParams.get('orderId') || ''; } catch { return ''; }
+  })() || (body.match(/\b\d{3}-\d{7}-\d{7}\b/) || [''])[0];
+  let button = page.getByRole('button', { name: FINISH_LATER_TEXT }).first();
+  if (!(await button.count().catch(() => 0))) button = page.locator('input[type="submit"], button, a, span.a-button-inner').filter({ hasText: FINISH_LATER_TEXT }).first();
+  let saved = false;
+  if (await button.count().catch(() => 0)) {
+    await button.click().catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
+    await page.waitForTimeout(2000);
+    saved = true;
+  }
+  return { orderId, saved };
 }
 
 async function amazonMarketplacesView() {
