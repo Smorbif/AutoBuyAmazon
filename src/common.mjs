@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile, writeFile } from 'node:fs/promises';
 import dotenv from 'dotenv';
+import { normalizeCondition } from './offer-condition.mjs';
 
 dotenv.config();
 
@@ -32,6 +33,39 @@ export function amazonMarketplaceFromUrl(rawUrl) {
   } catch {
     return null;
   }
+}
+
+export const AMAZON_MARKETPLACE_LABELS = {
+  'www.amazon.it': 'IT', 'www.amazon.de': 'DE', 'www.amazon.fr': 'FR', 'www.amazon.es': 'ES', 'www.amazon.nl': 'NL',
+  'www.amazon.com.be': 'BE', 'www.amazon.pl': 'PL', 'www.amazon.se': 'SE', 'www.amazon.ie': 'IE'
+};
+
+function amazonMarketsPath() {
+  return path.join(settings.dataDir, 'amazon-marketplaces.json');
+}
+
+export async function readAmazonMarkets() {
+  try {
+    return JSON.parse(await readFile(amazonMarketsPath(), 'utf8')) || {};
+  } catch {
+    return {};
+  }
+}
+
+export async function recordAmazonMarket(marketplaceHost, displayName) {
+  const host = normalizeAmazonMarketplaceHost(marketplaceHost);
+  if (!host) return;
+  const markets = await readAmazonMarkets();
+  markets[host] = { displayName: String(displayName || '').slice(0, 120), confirmedAt: new Date().toISOString() };
+  await writeFile(amazonMarketsPath(), JSON.stringify(markets, null, 2), 'utf8');
+}
+
+export async function forgetAmazonMarket(marketplaceHost) {
+  const host = normalizeAmazonMarketplaceHost(marketplaceHost);
+  const markets = await readAmazonMarkets();
+  if (!host || !markets[host]) return;
+  delete markets[host];
+  await writeFile(amazonMarketsPath(), JSON.stringify(markets, null, 2), 'utf8');
 }
 
 export function marketplaceCurrency(marketplaceHost) {
@@ -145,5 +179,6 @@ export function validateTrigger(input) {
   if (!Number.isInteger(maxItemCents) || maxItemCents < 1) throw new Error('maxItemCents deve essere un intero positivo in unità minori della valuta del marketplace.');
   if (!Number.isInteger(maxTotalCents) || maxTotalCents < maxItemCents) throw new Error('maxTotalCents deve essere almeno pari a maxItemCents nella valuta del marketplace.');
   if (!marketplaceHost) throw new Error('Marketplace Amazon europeo non valido o non supportato.');
-  return { notificationId, asin, maxItemCents, maxTotalCents, marketplaceHost, currency: marketplaceCurrency(marketplaceHost) };
+  const condition = normalizeCondition(input.condition);
+  return { notificationId, asin, maxItemCents, maxTotalCents, marketplaceHost, condition, currency: marketplaceCurrency(marketplaceHost) };
 }

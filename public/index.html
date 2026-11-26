@@ -106,9 +106,9 @@
             <div class="eyebrow" data-i18n="protectionEyebrow">02 · PROTEZIONI</div><h2 data-i18n="activeLimits">Limiti attivi</h2>
             <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="marketplaceLimit">Marketplace europeo</strong><span data-i18n="marketplaceLimitDetail">Segue il link Keepa; Regno Unito escluso</span></div></div>
             <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="maxPrice">Prezzo massimo</strong><span data-i18n="maxPriceDetail">Non supera il prezzo nell’avviso</span></div></div>
-            <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="keepaCondition">Tipologia Keepa</strong><span data-i18n="keepaConditionDetail">Nessun filtro condizione duplicato</span></div></div>
+            <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="keepaCondition">Tipologia Keepa</strong><span data-i18n="keepaConditionDetail">Stessa condizione dell’avviso (nuovo, usato, Warehouse…)</span></div></div>
             <div class="limit-line"><div class="limit-check">✓</div><div><strong data-i18n="checkedCart">Carrello controllato</strong><span data-i18n="checkedCartDetail">Un solo articolo per ordine</span></div></div>
-            <div class="notice-box"><span class="notice-icon">i</span><span data-i18n="orderNotice">Ogni avviso Keepa valido avvia il controllo dell’ASIN. Il totale dell’ordine, spedizione inclusa, non può superare il prezzo dell’avviso; condizione e venditore non vengono filtrati una seconda volta.</span></div>
+            <div class="notice-box"><span class="notice-icon">i</span><span data-i18n="orderNotice">Ogni avviso Keepa valido avvia il controllo dell’ASIN. Il totale dell’ordine, spedizione inclusa, non può superare il prezzo dell’avviso; viene scelta solo un’offerta nella condizione indicata dall’avviso Keepa (nuovo, Amazon, usato e grado, Warehouse, ricondizionato).</span></div>
           </aside>
         </section>
 
@@ -130,7 +130,7 @@
             </article>
             <article id="amazonConnectionCard" class="connection-card">
               <div class="connection-brand amazon-brand">a</div>
-              <div class="connection-copy"><h3 data-i18n="amazonCardTitle">Accedi ad Amazon Europa</h3><p id="amazonCardDescription" data-i18n="amazonCardDescription">La sessione viene rilevata automaticamente. Accedi nella finestra solo se richiesto; ogni ordine segue il marketplace del link Keepa.</p><span id="amazonSessionBadge" class="connection-state">Da collegare</span></div>
+              <div class="connection-copy"><h3 data-i18n="amazonCardTitle">Accedi ad Amazon Europa</h3><p id="amazonCardDescription" data-i18n="amazonCardDescription">La sessione viene rilevata automaticamente. Accedi nella finestra solo se richiesto; ogni ordine segue il marketplace del link Keepa.</p><span id="amazonSessionBadge" class="connection-state">Da collegare</span><div id="amazonMarkets" class="market-buttons" aria-label="Marketplace Amazon"></div></div>
               <button class="button button-secondary" id="amazonLoginButton">Accedi ad Amazon</button>
             </article>
           </div>
@@ -169,7 +169,7 @@
           <h2 id="autoBuyConfirmTitle" data-i18n="confirmAutoBuyTitle">Abilitare gli acquisti automatici?</h2>
         </div>
       </div>
-      <p id="autoBuyConfirmDescription" data-i18n="confirmAutoBuyDescription">Ogni nuova notifica Keepa valida può inviare un ordine usando indirizzo e pagamento selezionati su Amazon. Il programma non filtra venditore o condizione e non ripete gli avvisi già elaborati.</p>
+      <p id="autoBuyConfirmDescription" data-i18n="confirmAutoBuyDescription">Ogni nuova notifica Keepa valida può inviare un ordine usando indirizzo e pagamento selezionati su Amazon. Il programma sceglie solo offerte nella condizione indicata dall’avviso Keepa e non ripete gli avvisi già elaborati.</p>
       <div id="autoBuyConfirmNote" class="confirm-dialog-note" data-i18n="confirmAutoBuyNote">Prima di attivare, controlla offerta, account Amazon, prezzo massimo e metodo di pagamento.</div>
       <div class="confirm-dialog-actions">
         <button type="button" class="button button-secondary" id="cancelAutoBuyConfirm" autofocus data-i18n="cancel">Annulla</button>

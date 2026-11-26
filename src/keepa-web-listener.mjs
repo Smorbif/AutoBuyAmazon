@@ -1,3 +1,4 @@
+import { parseKeepaCondition } from './offer-condition.mjs';
 import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
 import { settings, amazonMarketplaceFromUrl, marketplaceCurrency, extractMarketplaceMinor, formatMarketplacePrice } from './common.mjs';
@@ -115,7 +116,8 @@ async function forwardNotification(row, maxItemCents) {
     asin: row.asin,
     maxItemCents,
     maxTotalCents: maxItemCents,
-    marketplaceHost: row.marketplaceHost
+    marketplaceHost: row.marketplaceHost,
+    condition: parseKeepaCondition(row.text)
   };
   const response = await fetch(`http://127.0.0.1:${settings.port}/trigger`, {
     method: 'POST',

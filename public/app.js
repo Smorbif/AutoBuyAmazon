@@ -17,9 +17,9 @@ const translations = {
     privacyNote: 'Sessioni e configurazione restano sul PC o server che ospita il programma.', saveConfiguration: 'Salva configurazione',
     protectionEyebrow: '02 · PROTEZIONI', activeLimits: 'Limiti attivi', marketplaceLimit: 'Marketplace europeo',
     marketplaceLimitDetail: 'Segue il link dell’avviso; Regno Unito escluso', maxPrice: 'Prezzo massimo', maxPriceDetail: 'Non supera il prezzo nell’avviso',
-    keepaCondition: 'Tipologia Keepa', keepaConditionDetail: 'Nessun filtro condizione duplicato', checkedCart: 'Carrello controllato',
+    keepaCondition: 'Tipologia Keepa', keepaConditionDetail: 'Stessa condizione dell’avviso (nuovo, usato, Warehouse…)', checkedCart: 'Carrello controllato',
     checkedCartDetail: 'Un solo articolo per ordine',
-    orderNotice: 'Ogni avviso Keepa valido avvia il controllo dell’ASIN sul marketplace indicato dal link. Il totale, spedizione inclusa, non può superare il prezzo dell’avviso; condizione e venditore non vengono filtrati una seconda volta.',
+    orderNotice: 'Ogni avviso Keepa valido avvia il controllo dell’ASIN sul marketplace indicato dal link. Il totale, spedizione inclusa, non può superare il prezzo dell’avviso; viene scelta solo un’offerta nella condizione indicata dall’avviso Keepa (nuovo, Amazon, usato e grado, Warehouse, ricondizionato).',
     connectionsEyebrow: '03 · COLLEGAMENTI', connectAccounts: 'Accedi ai tuoi account', initialAccess: 'Accesso iniziale e verifica',
     telegramCardTitle: 'Collega Telegram', telegramConnectedTitle: 'Account Telegram', telegramCardDescription: 'Accedi una volta per permettere al programma di leggere gli avvisi Keepa.',
     keepaCardTitle: 'Collega il sito Keepa', keepaConnectedTitle: 'Account Keepa', keepaCardDescription: 'Accedi nel browser che si apre, poi conferma nel pannello. Il programma controlla “Notifiche recenti”.',
@@ -31,14 +31,14 @@ const translations = {
     systemStatus: 'STATO DEL SISTEMA', activityLog: 'Registro attività', clear: 'Pulisci', waitingActivity: 'In attesa di attività…',
     footerProduct: 'Keepa Buyer · Amazon Europa', footerPrivacy: 'Password e dati carta non vengono inviati al webhook.', warning: 'ATTENZIONE',
     confirmAutoBuyTitle: 'Abilitare gli acquisti automatici?',
-    confirmAutoBuyDescription: 'Ogni nuova notifica Keepa valida può inviare un ordine usando indirizzo e pagamento selezionati su Amazon. Il programma non filtra venditore o condizione e non ripete gli avvisi già elaborati.',
+    confirmAutoBuyDescription: 'Ogni nuova notifica Keepa valida può inviare un ordine usando indirizzo e pagamento selezionati su Amazon. Il programma sceglie solo offerte nella condizione indicata dall’avviso Keepa e non ripete gli avvisi già elaborati.',
     confirmAutoBuyNote: 'Prima di attivare, controlla offerta, account Amazon, prezzo massimo e metodo di pagamento.',
     confirmEnablePurchases: 'Abilita acquisti', switchToEnglish: 'Passa all’inglese', switchToItalian: 'Passa all’italiano',
     credentialsReady: 'Credenziali Telegram configurate', credentialsMissing: 'Credenziali Telegram da inserire',
     credentialsDetailReady: 'api_id e api_hash sono salvati in locale.', credentialsDetailMissing: 'Inserisci api_id e api_hash per collegare Telegram.',
     edit: 'Modifica', insert: 'Inserisci', undo: 'Annulla', connected: 'Connesso', notConnected: 'Non connesso',
     accessRequired: 'Accesso richiesto', verificationRequired: 'Verifica richiesta', setupRequired: 'Da configurare', accountNotVerified: 'Account non verificato',
-    verifyAccount: 'Verifica account', linkTelegram: 'Collega Telegram', loginKeepa: 'Accedi al sito Keepa', loginAmazon: 'Accedi ad Amazon',
+    verifyAccount: 'Verifica account', linkTelegram: 'Collega Telegram', loginKeepa: 'Accedi al sito Keepa', loginAmazon: 'Accedi ad Amazon', marketConnected: '{market}: collegato come {account}. Premi per verificare di nuovo.', marketNotConnected: '{market}: non collegato. Premi per accedere.',
     sourceTelegramLabel: 'TELEGRAM', sourceKeepaLabel: 'SITO KEEPA', sourceTelegramName: 'Telegram', sourceKeepaName: 'il sito Keepa',
     telegramSessionNotConnected: 'Sessione non collegata', telegramSessionNeedsVerification: 'Sessione presente · identità da verificare',
     telegramConnected: '✓ Connesso: {account}', amazonConnected: '✓ Connesso: {account}', keepaConnected: '✓ Connesso: {account}',
@@ -76,8 +76,8 @@ const translations = {
     privacyNote: 'Sessions and settings stay on the PC or server running the program.', saveConfiguration: 'Save settings',
     protectionEyebrow: '02 · SAFEGUARDS', activeLimits: 'Active limits', marketplaceLimit: 'European marketplace',
     marketplaceLimitDetail: 'Follows the alert link; United Kingdom excluded', maxPrice: 'Maximum price', maxPriceDetail: 'Cannot exceed the alert price',
-    keepaCondition: 'Keepa condition', keepaConditionDetail: 'No duplicate condition filter', checkedCart: 'Cart verification', checkedCartDetail: 'One item per order',
-    orderNotice: 'Each valid Keepa alert starts an ASIN check on the marketplace in its link. The order total, including shipping, cannot exceed the alert price; condition and seller are not filtered a second time.',
+    keepaCondition: 'Keepa condition', keepaConditionDetail: 'Same condition as the alert (new, used, Warehouse…)', checkedCart: 'Cart verification', checkedCartDetail: 'One item per order',
+    orderNotice: 'Each valid Keepa alert starts an ASIN check on the marketplace in its link. The order total, including shipping, cannot exceed the alert price; only an offer in the condition stated by the Keepa alert is chosen (new, Amazon, used and grade, Warehouse, refurbished).',
     connectionsEyebrow: '03 · CONNECTIONS', connectAccounts: 'Connect your accounts', initialAccess: 'Initial sign-in and verification',
     telegramCardTitle: 'Connect Telegram', telegramConnectedTitle: 'Telegram account', telegramCardDescription: 'Sign in once to let the program read Keepa alerts.',
     keepaCardTitle: 'Connect the Keepa website', keepaConnectedTitle: 'Keepa account', keepaCardDescription: 'Sign in in the browser that opens, then confirm in the dashboard. The program checks “Recent notifications”.',
@@ -89,14 +89,14 @@ const translations = {
     systemStatus: 'SYSTEM STATUS', activityLog: 'Activity log', clear: 'Clear', waitingActivity: 'Waiting for activity…',
     footerProduct: 'Keepa Buyer · Amazon Europe', footerPrivacy: 'Passwords and card details are not sent to the webhook.', warning: 'WARNING',
     confirmAutoBuyTitle: 'Enable automatic purchases?',
-    confirmAutoBuyDescription: 'Each new valid Keepa alert can submit an order using the address and payment method selected on Amazon. The program does not filter seller or condition, and it does not repeat alerts already processed.',
+    confirmAutoBuyDescription: 'Each new valid Keepa alert can submit an order using the address and payment method selected on Amazon. The program only picks offers in the condition stated by the Keepa alert, and it does not repeat alerts already processed.',
     confirmAutoBuyNote: 'Before enabling, check the offer, Amazon account, maximum price and payment method.',
     confirmEnablePurchases: 'Enable purchases', switchToEnglish: 'Switch to English', switchToItalian: 'Switch to Italian',
     credentialsReady: 'Telegram credentials configured', credentialsMissing: 'Telegram credentials required',
     credentialsDetailReady: 'api_id and api_hash are stored locally.', credentialsDetailMissing: 'Enter api_id and api_hash to connect Telegram.',
     edit: 'Edit', insert: 'Add', undo: 'Cancel', connected: 'Connected', notConnected: 'Not connected',
     accessRequired: 'Sign-in required', verificationRequired: 'Verification required', setupRequired: 'Setup required', accountNotVerified: 'Account not verified',
-    verifyAccount: 'Verify account', linkTelegram: 'Connect Telegram', loginKeepa: 'Sign in to Keepa', loginAmazon: 'Sign in to Amazon',
+    verifyAccount: 'Verify account', linkTelegram: 'Connect Telegram', loginKeepa: 'Sign in to Keepa', loginAmazon: 'Sign in to Amazon', marketConnected: '{market}: connected as {account}. Press to verify again.', marketNotConnected: '{market}: not connected. Press to sign in.',
     sourceTelegramLabel: 'TELEGRAM', sourceKeepaLabel: 'KEEPA WEBSITE', sourceTelegramName: 'Telegram', sourceKeepaName: 'the Keepa website',
     telegramSessionNotConnected: 'Session not connected', telegramSessionNeedsVerification: 'Session found · identity not verified',
     telegramConnected: '✓ Connected: {account}', amazonConnected: '✓ Connected: {account}', keepaConnected: '✓ Connected: {account}',
@@ -308,6 +308,23 @@ function updateTelegramCredentials(config) {
   $('#telegramCredentialsToggle').setAttribute('aria-expanded', String(telegramCredentialsEditorOpen));
 }
 
+function renderAmazonMarkets(markets, accessInProgress) {
+  const container = $('#amazonMarkets');
+  if (!container) return;
+  container.replaceChildren(...markets.map((market) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `market-button${market.connected ? ' connected' : ''}`;
+    button.textContent = market.label;
+    button.disabled = Boolean(accessInProgress);
+    button.title = market.connected
+      ? tr('marketConnected', { market: market.host.replace(/^www\./, ''), account: market.displayName || '—' })
+      : tr('marketNotConnected', { market: market.host.replace(/^www\./, '') });
+    button.addEventListener('click', () => startLogin('amazon', market.host));
+    return button;
+  }));
+}
+
 async function refresh() {
   try {
     const state = await api('/api/state');
@@ -373,6 +390,7 @@ async function refresh() {
     $('#autoBuyEnableButton').disabled = configDirty || accessInProgress;
     $('#telegramLoginButton').textContent = state.interactiveKind === 'telegram' ? tr('telegramInProgress') : state.telegramSessionExists ? tr('verifyAccount') : tr('linkTelegram');
     $('#keepaLoginButton').textContent = state.interactiveKind === 'keepa' ? tr('keepaInProgress') : state.keepaSessionConfirmed ? tr('verifyAccount') : tr('loginKeepa');
+    renderAmazonMarkets(state.amazonMarketplaces || [], accessInProgress);
     $('#amazonLoginButton').textContent = state.interactiveKind === 'amazon' ? tr('retryAmazon') : state.amazonSessionConfirmed ? tr('verifyAccount') : tr('loginAmazon');
     renderEvents(state.events || []);
     latestActivity = state.activity || [];
@@ -423,7 +441,7 @@ $('#telegramCredentialsToggle').addEventListener('click', () => {
   updateTelegramCredentials(latestConfig);
 });
 
-async function startLogin(kind) {
+async function startLogin(kind, marketplace = '') {
   try {
     const retryAmazon = kind === 'amazon' && latestInteractiveKind === 'amazon';
     if (retryAmazon) {
@@ -438,7 +456,7 @@ async function startLogin(kind) {
       if (!stopped) throw new Error(currentLanguage === 'it' ? 'Il controllo Amazon è ancora in chiusura. Riprova tra qualche secondo.' : 'Amazon verification is still stopping. Try again in a few seconds.');
       await new Promise((resolve) => setTimeout(resolve, 350));
     }
-    const result = await api('/api/login/start', { method: 'POST', body: JSON.stringify({ kind }) });
+    const result = await api('/api/login/start', { method: 'POST', body: JSON.stringify({ kind, marketplace }) });
     const sourceName = kind === 'telegram' ? tr('sourceTelegramName') : kind === 'amazon' ? 'Amazon' : tr('sourceKeepaName');
     if (result.alreadyRunning) {
       showToast(tr('loginAlreadyRunning', { source: sourceName }));

@@ -4,6 +4,7 @@ import { StringSession } from 'teleproto/sessions';
 import { NewMessage } from 'teleproto/events';
 import { settings, persistEnvValue, marketplaceCurrency, formatMarketplacePrice } from './common.mjs';
 import { parseKeepaAlert } from './keepa-alert.mjs';
+import { parseKeepaCondition, describeCondition } from './offer-condition.mjs';
 import { findKeepaSenderInHistory } from './keepa-sender.mjs';
 import { pickAmazonProduct } from './amazon-link.mjs';
 
@@ -114,7 +115,8 @@ async function forwardAlert(message) {
     asin,
     maxItemCents: priceCents,
     maxTotalCents: priceCents,
-    marketplaceHost
+    marketplaceHost,
+    condition: parseKeepaCondition(text)
   };
   const response = await fetch(`http://127.0.0.1:${settings.port}/trigger`, {
     method: 'POST',
@@ -128,7 +130,8 @@ async function forwardAlert(message) {
     const body = await response.text();
     throw new Error(`Purchase runner ha risposto ${response.status}: ${body}`);
   }
-  console.log(`Keepa alert inoltrato: sender ${senderId}, ASIN ${asin}, marketplace ${marketplaceHost}, tetto articolo ${formatMarketplacePrice(priceCents, currency)}. ` +
+  console.log(`Keepa alert inoltrato: sender ${senderId}, ASIN ${asin}, marketplace ${marketplaceHost}, tetto articolo ${formatMarketplacePrice(priceCents, currency)}, condizione ${describeCondition(trigger.condition)}` +
+    `${trigger.condition.label ? ` ("${trigger.condition.label}")` : ''}. ` +
     `Stato: ${(await response.json()).status}.`);
 }
 
