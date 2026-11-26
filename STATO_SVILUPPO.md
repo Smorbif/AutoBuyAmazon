@@ -5,6 +5,8 @@
 
 ## Stato della revisione corrente
 
+- La scheda Amazon unificata e il comando **Riprova verifica** sono pubblicati su GitHub nel branch main; resta da confermare il flusso con l’account reale.
+
 - La revisione include il selettore italiano/inglese nell’intestazione e mantiene la lingua scelta nel browser.
 - Il pulsante Telegram riflette la sessione già riconosciuta: propone la verifica dell’account invece di invitare a collegarlo di nuovo.
 - Gli avvisi Keepa vengono associati al marketplace Amazon indicato dal link, tra gli store europei supportati; il Regno Unito resta escluso. I prezzi sono trattati nella valuta del marketplace.
