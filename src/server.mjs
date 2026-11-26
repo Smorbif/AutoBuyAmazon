@@ -89,7 +89,11 @@ const ADD_TO_CART_NAME = /aggiungi al carrello|add to (?:cart|basket)|in den ein
 
 async function cardPriceCents(card, currency) {
   // Prima il prezzo da pagare, poi qualsiasi prezzo non barrato.
-  for (const selector of ['.priceToPay .a-offscreen', '.apexPriceToPay .a-offscreen', '[id^="aod-price-"] .a-offscreen', '.a-price:not(.a-text-price) .a-offscreen']) {
+  for (const selector of [
+    '.priceToPay .a-offscreen', '.priceToPay .aok-offscreen', '.apexPriceToPay .a-offscreen',
+    '[id^="aod-price-"] .a-offscreen', '[id^="aod-price-"] .aok-offscreen',
+    '.a-price:not(.a-text-price) .a-offscreen', '.a-price:not(.a-text-price) .aok-offscreen', '.a-price:not(.a-text-price)'
+  ]) {
     const value = await card.locator(selector).first().textContent({ timeout: 1000 }).catch(() => '');
     const cents = extractMarketplaceMinor(value, currency);
     if (cents !== null) return cents;
@@ -99,20 +103,35 @@ async function cardPriceCents(card, currency) {
 }
 
 async function offerCards(page) {
+  const cards = [];
   // Pannello "Tutte le offerte" (AOD): offerta in evidenza + altre offerte.
-  const aod = await page.locator('#aod-pinned-offer, #aod-offer').all().catch(() => []);
-  if (aod.length) return aod;
-  const legacy = await page.locator('.olpOffer, [data-csa-c-offer-id]').all().catch(() => []);
-  if (legacy.length) return legacy;
-  // Pagina prodotto senza pannello: usa la buy box principale.
-  for (const selector of ['#apex_desktop', '#desktop_buybox', '#buybox', '#centerCol']) {
+  const pinned = page.locator('#aod-pinned-offer').first();
+  if (await pinned.count().catch(() => 0)) {
+    // Il prezzo dell'offerta in evidenza può stare fuori dal suo contenitore (#aod-price-0).
+    const pinnedPrice = page.locator('#aod-price-0').first();
+    cards.push({ priceCard: pinned, fallbackPriceCard: (await pinnedPrice.count().catch(() => 0)) ? pinnedPrice : null, actionCard: pinned });
+  }
+  for (const card of await page.locator('#aod-offer').all().catch(() => [])) cards.push({ priceCard: card, actionCard: card });
+  if (!cards.length) {
+    for (const card of await page.locator('.olpOffer, [data-csa-c-offer-id]').all().catch(() => [])) cards.push({ priceCard: card, actionCard: card });
+  }
+  // Buy box della pagina prodotto: sempre come candidato aggiuntivo.
+  for (const selector of ['#corePrice_feature_div', '#corePriceDisplay_desktop_feature_div', '#apex_desktop', '#desktop_buybox', '#buybox']) {
     const box = page.locator(selector).first();
     if (await box.count().catch(() => 0)) {
-      const buyBox = page.locator('#desktop_buybox, #buybox').first();
-      return [{ priceCard: box, actionCard: (await buyBox.count().catch(() => 0)) ? buyBox : page.locator('body') }];
+      const buyBox = page.locator('#desktop_buybox, #buybox, #addToCart_feature_div').first();
+      if (await buyBox.count().catch(() => 0)) cards.push({ priceCard: box, actionCard: buyBox });
+      break;
     }
   }
-  return [];
+  return cards;
+}
+
+async function waitForOfferPrices(page) {
+  await page.waitForFunction(() => {
+    const nodes = document.querySelectorAll('#aod-pinned-offer .a-price, #aod-price-0 .a-price, #aod-offer .a-price, #corePrice_feature_div .a-price, #corePriceDisplay_desktop_feature_div .a-price, #apex_desktop .a-price');
+    return [...nodes].some((node) => /\d/.test(node.textContent || ''));
+  }, null, { timeout: 15000 }).catch(() => {});
 }
 
 async function saveOfferDebug(page, trigger) {
@@ -130,6 +149,7 @@ async function detectOffer(page, trigger) {
   await page.waitForSelector(OFFER_READY_SELECTOR, { timeout: 20000 }).catch(() => {});
   // Il pannello AOD si carica in modo asincrono dopo la pagina prodotto.
   await page.waitForSelector('#aod-pinned-offer, #aod-offer', { timeout: 8000 }).catch(() => {});
+  await waitForOfferPrices(page);
   const cards = await offerCards(page);
   if (cards.length === 0) {
     const debug = await saveOfferDebug(page, trigger);
@@ -139,9 +159,9 @@ async function detectOffer(page, trigger) {
   const matches = [];
   let cheapest = null;
   for (const item of cards) {
-    const priceCard = item.priceCard || item;
-    const actionCard = item.actionCard || item;
-    const cents = await cardPriceCents(priceCard, trigger.currency);
+    const { priceCard, actionCard, fallbackPriceCard } = item;
+    let cents = await cardPriceCents(priceCard, trigger.currency);
+    if (cents === null && fallbackPriceCard) cents = await cardPriceCents(fallbackPriceCard, trigger.currency);
     if (cents === null) continue;
     if (cheapest === null || cents < cheapest) cheapest = cents;
     if (cents > trigger.maxItemCents) continue;
@@ -151,8 +171,8 @@ async function detectOffer(page, trigger) {
   matches.sort((a, b) => a.cents - b.cents);
   if (matches.length === 0) {
     const seen = cheapest === null ? 'nessun prezzo leggibile' : `migliore offerta vista ${formatMarketplacePrice(cheapest, trigger.currency)}`;
-    if (cheapest === null) await saveOfferDebug(page, trigger);
-    throw new Error(`Nessuna offerta del prodotto è disponibile entro il prezzo indicato da Keepa (${seen}).`);
+    const debug = cheapest === null ? await saveOfferDebug(page, trigger) : null;
+    throw new Error(`Nessuna offerta del prodotto è disponibile entro il prezzo indicato da Keepa (${seen}).${debug ? ` Schermata salvata in ${debug}.` : ''}`);
   }
   return matches[0];
 }
