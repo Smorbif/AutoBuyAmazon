@@ -63,7 +63,7 @@ Leggere gli avvisi Keepa via Telegram oppure dalla pagina Keepa Tracking → Not
 | Telegram MTProto con sessione locale | Legge il messaggio Keepa già presente nella chat Telegram dell’utente; non usa Telegram per effettuare l’ordine. |
 | Keepa web come sorgente alternativa | Per chi riceve avvisi nell’app Keepa senza Telegram/API, Playwright riusa l’accesso al sito e legge la scheda Notifiche recenti. Non usa il piano API. |
 | Scraping Keepa limitato al DOM visibile | Evita API private o una dipendenza da un piano API; è però fragile se cambia il sito e va verificato con la pagina autenticata reale. |
-| Keepa come fonte della condizione e del trigger | Evita una seconda configurazione potenzialmente incoerente con il tracking. Per questo il runner non impone un grado d’usato o un venditore. |
+| Keepa come fonte della condizione e del trigger | La condizione (nuovo, Amazon, usato e grado, Warehouse, ricondizionato) viene letta dal messaggio Keepa e applicata alle offerte Amazon; se il messaggio non la indica, le offerte non vengono filtrate. |
 | Prezzo attuale dell’avviso come limite articolo e totale | Non aggiunge un margine spedizione; se il totale supera l’avviso, l’ordine viene fermato. |
 | Acquisto automatico disattivato inizialmente | Evita che un’installazione nuova invii un ordine prima che account, mittente e checkout siano verificati. L’utente lo attiva dal pannello. |
 | Mittente Keepa rilevato da cronologia o primo avviso valido | Evita la copia manuale dell’ID; dopo il rilevamento gli avvisi di altri mittenti vengono ignorati. |

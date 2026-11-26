@@ -34,3 +34,5 @@ button:disabled{opacity:.56;cursor:wait;transform:none!important;box-shadow:none
 .telegram-credentials-state strong{font:600 10px Manrope,sans-serif;color:#40515b}
 .telegram-credentials-state small{font-size:9px;color:#96a1a8;margin-top:3px}
 .language-toggle{height:31px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#4b5b66;padding:0 9px;display:inline-flex;align-items:center;gap:6px;font:600 10px 'DM Sans',sans-serif;cursor:pointer}.language-toggle:hover{background:#f7faf8;border-color:#dce7e0}.language-flag{font-size:14px;line-height:1}.sender-hint{margin:0!important;color:#8b979e!important;line-height:1.45}
+
+.market-buttons{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}.market-button{height:24px;min-width:34px;padding:0 7px;border:1px solid #e6ebe8;border-radius:6px;background:#f8faf9;color:#6b7a73;font:700 9px 'DM Sans',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:4px}.market-button:hover{background:#eef6f1}.market-button.connected{border-color:#bfe0cf;background:#eaf5ef;color:#248161}.market-button.connected:before{content:'✓'}.market-button:disabled{opacity:.5;cursor:default}

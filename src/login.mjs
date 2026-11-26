@@ -1,5 +1,8 @@
 import { chromium } from 'playwright';
-import { settings, amazonBaseUrl } from './common.mjs';
+import { settings, amazonBaseUrl, normalizeAmazonMarketplaceHost, recordAmazonMarket } from './common.mjs';
+
+// Marketplace su cui fare l'accesso: argomento da riga di comando, altrimenti quello principale.
+const loginHost = normalizeAmazonMarketplaceHost(process.argv[2]) || settings.amazonHost;
 import { mkdir, writeFile } from 'node:fs/promises';
 import readline from 'node:readline/promises';
 
@@ -38,10 +41,11 @@ async function detectAmazonAccount() {
     const confirmedAt = new Date().toISOString();
     await writeFile(`${settings.dataDir}/amazon-account.json`, JSON.stringify({ displayName, confirmedAt }, null, 2), 'utf8');
     await writeFile(`${settings.dataDir}/amazon-login.ok`, confirmedAt, 'utf8');
+    await recordAmazonMarket(loginHost, displayName);
     done = true;
     clearInterval(pollTimer);
     prompt.close();
-    console.log(`Amazon collegato all’account: ${displayName}.`);
+    console.log(`Amazon (${loginHost.replace(/^www\./, '')}) collegato all’account: ${displayName}.`);
     await context.close().catch(() => {});
     return true;
   } finally {
@@ -50,13 +54,13 @@ async function detectAmazonAccount() {
 }
 
 try {
-  await page.goto(amazonBaseUrl(), { waitUntil: 'domcontentloaded' });
+  await page.goto(amazonBaseUrl(loginHost), { waitUntil: 'domcontentloaded' });
 } catch (error) {
   if (!browserClosed) throw error;
 }
 
 if (!browserClosed) {
-  console.log('Accedi ad Amazon, poi premi Conferma per verificare l’account. Se sei già connesso, il rilevamento avviene automaticamente.');
+  console.log(`Accedi ad Amazon su ${loginHost.replace(/^www\./, '')}, poi premi Conferma per verificare l’account. Se sei già connesso, il rilevamento avviene automaticamente.`);
   pollTimer = setInterval(() => {
     detectAmazonAccount().catch((error) => console.error(`Verifica Amazon: ${error.message}`));
   }, 1200);

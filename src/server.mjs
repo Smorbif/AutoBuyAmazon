@@ -5,7 +5,8 @@ import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { settings, projectRoot, reloadSettings, amazonBaseUrl, amazonMarketplaceFromUrl, normalizeText, extractMarketplaceMinor, formatMarketplacePrice, validateTrigger } from './common.mjs';
+import { classifyAmazonOffer, offerMatchesCondition, describeCondition } from './offer-condition.mjs';
+import { settings, projectRoot, reloadSettings, amazonBaseUrl, amazonMarketplaceFromUrl, normalizeText, extractMarketplaceMinor, formatMarketplacePrice, validateTrigger, normalizeAmazonMarketplaceHost, EU_AMAZON_MARKETPLACES, AMAZON_MARKETPLACE_LABELS, readAmazonMarkets, recordAmazonMarket, forgetAmazonMarket } from './common.mjs';
 
 await mkdir(settings.profileDir, { recursive: true });
 await mkdir(settings.dataDir, { recursive: true });
@@ -89,7 +90,11 @@ const ADD_TO_CART_NAME = /aggiungi al carrello|add to (?:cart|basket)|in den ein
 
 async function cardPriceCents(card, currency) {
   // Prima il prezzo da pagare, poi qualsiasi prezzo non barrato.
-  for (const selector of ['.priceToPay .a-offscreen', '.apexPriceToPay .a-offscreen', '[id^="aod-price-"] .a-offscreen', '.a-price:not(.a-text-price) .a-offscreen']) {
+  for (const selector of [
+    '.priceToPay .a-offscreen', '.priceToPay .aok-offscreen', '.apexPriceToPay .a-offscreen',
+    '[id^="aod-price-"] .a-offscreen', '[id^="aod-price-"] .aok-offscreen',
+    '.a-price:not(.a-text-price) .a-offscreen', '.a-price:not(.a-text-price) .aok-offscreen', '.a-price:not(.a-text-price)'
+  ]) {
     const value = await card.locator(selector).first().textContent({ timeout: 1000 }).catch(() => '');
     const cents = extractMarketplaceMinor(value, currency);
     if (cents !== null) return cents;
@@ -99,20 +104,35 @@ async function cardPriceCents(card, currency) {
 }
 
 async function offerCards(page) {
+  const cards = [];
   // Pannello "Tutte le offerte" (AOD): offerta in evidenza + altre offerte.
-  const aod = await page.locator('#aod-pinned-offer, #aod-offer').all().catch(() => []);
-  if (aod.length) return aod;
-  const legacy = await page.locator('.olpOffer, [data-csa-c-offer-id]').all().catch(() => []);
-  if (legacy.length) return legacy;
-  // Pagina prodotto senza pannello: usa la buy box principale.
-  for (const selector of ['#apex_desktop', '#desktop_buybox', '#buybox', '#centerCol']) {
+  const pinned = page.locator('#aod-pinned-offer').first();
+  if (await pinned.count().catch(() => 0)) {
+    // Il prezzo dell'offerta in evidenza può stare fuori dal suo contenitore (#aod-price-0).
+    const pinnedPrice = page.locator('#aod-price-0').first();
+    cards.push({ priceCard: pinned, sellerCard: pinned, featured: true, fallbackPriceCard: (await pinnedPrice.count().catch(() => 0)) ? pinnedPrice : null, actionCard: pinned });
+  }
+  for (const card of await page.locator('#aod-offer').all().catch(() => [])) cards.push({ priceCard: card, sellerCard: card, actionCard: card });
+  if (!cards.length) {
+    for (const card of await page.locator('.olpOffer, [data-csa-c-offer-id]').all().catch(() => [])) cards.push({ priceCard: card, actionCard: card });
+  }
+  // Buy box della pagina prodotto: sempre come candidato aggiuntivo.
+  for (const selector of ['#corePrice_feature_div', '#corePriceDisplay_desktop_feature_div', '#apex_desktop', '#desktop_buybox', '#buybox']) {
     const box = page.locator(selector).first();
     if (await box.count().catch(() => 0)) {
-      const buyBox = page.locator('#desktop_buybox, #buybox').first();
-      return [{ priceCard: box, actionCard: (await buyBox.count().catch(() => 0)) ? buyBox : page.locator('body') }];
+      const buyBox = page.locator('#desktop_buybox, #buybox, #addToCart_feature_div').first();
+      if (await buyBox.count().catch(() => 0)) cards.push({ priceCard: box, actionCard: buyBox, buyBox: true });
+      break;
     }
   }
-  return [];
+  return cards;
+}
+
+async function waitForOfferPrices(page) {
+  await page.waitForFunction(() => {
+    const nodes = document.querySelectorAll('#aod-pinned-offer .a-price, #aod-price-0 .a-price, #aod-offer .a-price, #corePrice_feature_div .a-price, #corePriceDisplay_desktop_feature_div .a-price, #apex_desktop .a-price');
+    return [...nodes].some((node) => /\d/.test(node.textContent || ''));
+  }, null, { timeout: 15000 }).catch(() => {});
 }
 
 async function saveOfferDebug(page, trigger) {
@@ -130,6 +150,7 @@ async function detectOffer(page, trigger) {
   await page.waitForSelector(OFFER_READY_SELECTOR, { timeout: 20000 }).catch(() => {});
   // Il pannello AOD si carica in modo asincrono dopo la pagina prodotto.
   await page.waitForSelector('#aod-pinned-offer, #aod-offer', { timeout: 8000 }).catch(() => {});
+  await waitForOfferPrices(page);
   const cards = await offerCards(page);
   if (cards.length === 0) {
     const debug = await saveOfferDebug(page, trigger);
@@ -138,10 +159,21 @@ async function detectOffer(page, trigger) {
 
   const matches = [];
   let cheapest = null;
+  let skippedByCondition = 0;
   for (const item of cards) {
-    const priceCard = item.priceCard || item;
-    const actionCard = item.actionCard || item;
-    const cents = await cardPriceCents(priceCard, trigger.currency);
+    const { priceCard, actionCard, fallbackPriceCard } = item;
+    const heading = item.buyBox ? '' : await priceCard.locator('#aod-offer-heading').first().innerText({ timeout: 500 }).catch(() => '');
+    const seller = item.buyBox
+      ? await page.locator('#merchantInfoFeature_feature_div #sellerProfileTriggerId, #merchantInfoFeature_feature_div .offer-display-feature-text-message, #merchant-info').first().innerText({ timeout: 500 }).catch(() => '')
+      : await (item.sellerCard || priceCard).locator('#aod-offer-soldBy a, #aod-offer-soldBy .a-col-right').first().innerText({ timeout: 500 })
+        .catch(() => (item.sellerCard || priceCard).locator('#aod-offer-soldBy').first().innerText({ timeout: 500 }).catch(() => ''));
+    const offerCondition = { ...classifyAmazonOffer(heading, seller), featured: Boolean(item.featured || item.buyBox) };
+    if (!offerMatchesCondition(offerCondition, trigger.condition)) {
+      skippedByCondition += 1;
+      continue;
+    }
+    let cents = await cardPriceCents(priceCard, trigger.currency);
+    if (cents === null && fallbackPriceCard) cents = await cardPriceCents(fallbackPriceCard, trigger.currency);
     if (cents === null) continue;
     if (cheapest === null || cents < cheapest) cheapest = cents;
     if (cents > trigger.maxItemCents) continue;
@@ -150,9 +182,13 @@ async function detectOffer(page, trigger) {
 
   matches.sort((a, b) => a.cents - b.cents);
   if (matches.length === 0) {
-    const seen = cheapest === null ? 'nessun prezzo leggibile' : `migliore offerta vista ${formatMarketplacePrice(cheapest, trigger.currency)}`;
-    if (cheapest === null) await saveOfferDebug(page, trigger);
-    throw new Error(`Nessuna offerta del prodotto è disponibile entro il prezzo indicato da Keepa (${seen}).`);
+    const wanted = trigger.condition?.kind && trigger.condition.kind !== 'any' ? `, condizione ${describeCondition(trigger.condition)}` : '';
+    if (cheapest === null && skippedByCondition) {
+      throw new Error(`Nessuna offerta nella condizione tracciata su Keepa (${describeCondition(trigger.condition)}); ${skippedByCondition} offerte di altra condizione ignorate.`);
+    }
+    const seen = cheapest === null ? `nessun prezzo leggibile${wanted}` : `migliore offerta vista ${formatMarketplacePrice(cheapest, trigger.currency)}${wanted}`;
+    const debug = cheapest === null ? await saveOfferDebug(page, trigger) : null;
+    throw new Error(`Nessuna offerta del prodotto è disponibile entro il prezzo indicato da Keepa (${seen}).${debug ? ` Schermata salvata in ${debug}.` : ''}`);
   }
   return matches[0];
 }
@@ -193,8 +229,20 @@ async function runTrigger(trigger) {
   if (/\/ap\/signin|\/signin/i.test(page.url())) throw new Error('Sessione Amazon non autenticata; esegui npm run login.');
   if (amazonMarketplaceFromUrl(page.url()) !== trigger.marketplaceHost) throw new Error('Navigazione fuori dal marketplace indicato dall’avviso Keepa; nessun acquisto eseguito.');
 
+  const accountLabel = await page.locator('#nav-link-accountList-nav-line-1').first().innerText({ timeout: 3000 }).catch(() => '');
+  const signedOut = /^\s*(?:hello,?\s*sign in|ciao,?\s*accedi|hallo,?\s*anmelden|bonjour,?\s*identifiez-vous|hola,?\s*identif[ií]cate|sign in|accedi|anmelden)/i.test(accountLabel);
+  if (!signedOut && accountLabel.trim()) {
+    await recordAmazonMarket(trigger.marketplaceHost, accountLabel.trim().replace(/^(?:ciao|hello|hallo|bonjour|hola)\s*[,!:\-]?\s*/i, '')).catch(() => {});
+  }
+  if (signedOut) {
+    await forgetAmazonMarket(trigger.marketplaceHost).catch(() => {});
+    const message = `Non risulti collegato ad Amazon su ${trigger.marketplaceHost}: premi il pulsante ${AMAZON_MARKETPLACE_LABELS[trigger.marketplaceHost] || trigger.marketplaceHost} nella scheda Amazon del pannello e accedi.`;
+    if (settings.autoBuy) throw new Error(message);
+    console.warn(`[${trigger.notificationId}] ${message}`);
+  }
+
   const offer = await detectOffer(page, trigger);
-  console.log(`[${trigger.notificationId}] Offerta su ${trigger.marketplaceHost}: ${formatMarketplacePrice(offer.cents, trigger.currency)} entro il prezzo dell’avviso Keepa.`);
+  console.log(`[${trigger.notificationId}] Offerta su ${trigger.marketplaceHost}: ${formatMarketplacePrice(offer.cents, trigger.currency)} entro il prezzo dell’avviso Keepa (condizione ${describeCondition(trigger.condition)}).`);
 
   if (!settings.autoBuy) return { status: 'dry_run', offerCents: offer.cents };
 
@@ -234,6 +282,14 @@ async function runTrigger(trigger) {
     throw new Error('Click finale inviato ma conferma ordine non riconosciuta: controlla Amazon prima di ritentare.');
   }
   return { status: 'ordered', offerCents: offer.cents, finalTotalCents: finalTotal };
+}
+
+async function amazonMarketplacesView() {
+  const markets = await readAmazonMarkets();
+  return [...EU_AMAZON_MARKETPLACES].map((domain) => {
+    const host = `www.${domain}`;
+    return { host, label: AMAZON_MARKETPLACE_LABELS[host] || domain, connected: Boolean(markets[host]), displayName: markets[host]?.displayName || '', confirmedAt: markets[host]?.confirmedAt || null };
+  });
 }
 
 function sendJson(response, statusCode, payload) {
@@ -344,7 +400,7 @@ async function setAutoBuy(enabled) {
   return config;
 }
 
-function launchInteractive(kind) {
+function launchInteractive(kind, marketplace = '') {
   if (kind === 'keepa' && monitorChild && settings.notificationSource === 'keepa-web') {
     throw new Error('Ferma prima il monitoraggio Keepa: sta usando il profilo del browser.');
   }
@@ -357,7 +413,9 @@ function launchInteractive(kind) {
   }
   const filename = kind === 'telegram' ? 'telegram-login.mjs' : kind === 'amazon' ? 'login.mjs' : kind === 'keepa' ? 'keepa-login.mjs' : null;
   if (!filename) throw new Error('Passaggio di accesso non riconosciuto.');
-  const child = spawn(process.execPath, [path.join(projectRoot, 'src', filename)], {
+  const loginHost = kind === 'amazon' ? normalizeAmazonMarketplaceHost(marketplace) : null;
+  if (kind === 'amazon' && marketplace && !loginHost) throw new Error('Marketplace Amazon non supportato.');
+  const child = spawn(process.execPath, [path.join(projectRoot, 'src', filename), ...(loginHost ? [loginHost] : [])], {
     cwd: projectRoot,
     env: process.env,
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -365,7 +423,7 @@ function launchInteractive(kind) {
   });
   interactiveChild = child;
   interactiveKind = kind;
-  const label = kind === 'telegram' ? 'Telegram' : kind === 'amazon' ? 'Amazon' : 'Keepa';
+  const label = kind === 'telegram' ? 'Telegram' : kind === 'amazon' ? `Amazon${loginHost ? ` ${AMAZON_MARKETPLACE_LABELS[loginHost] || loginHost}` : ''}` : 'Keepa';
   attachChild(child, label);
   logActivity('info', `Avviato accesso ${label}: segui le istruzioni nel browser e nel pannello.`);
   return { running: true, kind };
@@ -444,6 +502,7 @@ const server = http.createServer(async (request, response) => {
       telegramAccount,
       keepaAccount,
       amazonAccount,
+      amazonMarketplaces: await amazonMarketplacesView(),
       config: configView(),
       activity: activityLog.slice(-60),
       events: Object.values(journal).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 12)
@@ -470,7 +529,7 @@ const server = http.createServer(async (request, response) => {
   if (request.method === 'POST' && url.pathname === '/api/login/start') {
     try {
       const input = await readJson(request);
-      return sendJson(response, 202, launchInteractive(String(input.kind || '')));
+      return sendJson(response, 202, launchInteractive(String(input.kind || ''), String(input.marketplace || '')));
     } catch (error) {
       return sendJson(response, 400, { error: error.message });
     }
