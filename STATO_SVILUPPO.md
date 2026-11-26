@@ -15,7 +15,8 @@
 
 - La finestra usa il profilo Amazon persistente. Se la sessione è già attiva, il programma ora controlla automaticamente il saluto dell’account e salva identità e stato senza richiedere un nuovo login.
 - Se serve autenticarsi, il controllo continua mentre l’utente completa l’accesso; **Conferma** esegue anche una verifica immediata.
-- Chiudendo la finestra prima del completamento, il processo viene rilasciato e il pulsante torna disponibile per riprovare. Durante questo passaggio il pannello mostra solo **Conferma** e **Annulla**.
+- La verifica è accorpata alla scheda Amazon: l’area interattiva separata resta nascosta, il badge mostra l’avanzamento e il pulsante **Riprova verifica** riavvia solo il passaggio Amazon se resta bloccato.
+- Chiudendo la finestra prima del completamento, il processo viene rilasciato; il pulsante torna disponibile. Il controllo automatico continua finché il login è attivo.
 - Limite da verificare: il riconoscimento legge il selettore del saluto Amazon; cambiamenti del sito potrebbero richiedere un aggiornamento.
 - Verifica ancora necessaria: provare il flusso con il profilo Amazon reale. Nessun login o ordine è stato eseguito durante questa correzione.
 

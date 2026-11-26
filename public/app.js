@@ -42,13 +42,13 @@ const translations = {
     sourceTelegramLabel: 'TELEGRAM', sourceKeepaLabel: 'SITO KEEPA', sourceTelegramName: 'Telegram', sourceKeepaName: 'il sito Keepa',
     telegramSessionNotConnected: 'Sessione non collegata', telegramSessionNeedsVerification: 'Sessione presente · identità da verificare',
     telegramConnected: '✓ Connesso: {account}', amazonConnected: '✓ Connesso: {account}', keepaConnected: '✓ Connesso: {account}',
-    sessionFoundVerify: 'Sessione trovata · premi Verifica account', monitorStopped: 'Fermo',
+    sessionFoundVerify: 'Sessione trovata · premi Verifica account', amazonCheckingBadge: 'Verifica automatica in corso…', amazonCheckingDescription: 'Completa l’accesso nella finestra Amazon; il pannello riconosce e salva l’account automaticamente.', monitorStopped: 'Fermo',
     monitorRunningOrders: 'In funzione · ordini attivi', monitorRunningTest: 'In funzione · prova',
     monitorBadgeRunning: 'IN FUNZIONE', monitorBadgeStopped: 'FERMO', autoBuyActive: 'Acquisto automatico attivo',
     autoBuyInactive: 'Acquisto automatico disattivato',
     monitorOrdersDescription: 'Il monitoraggio legge gli avvisi tramite {source} e può inviare ordini entro i limiti configurati. Eventi e risultati appariranno qui.',
     monitorTestDescription: 'Il monitoraggio legge gli avvisi tramite {source} e controlla le offerte senza inviare ordini. Eventi e risultati appariranno qui.',
-    telegramInProgress: 'Telegram in corso…', keepaInProgress: 'Keepa in corso…', amazonInProgress: 'Amazon in corso…',
+    telegramInProgress: 'Telegram in corso…', keepaInProgress: 'Keepa in corso…', amazonInProgress: 'Verifica Amazon…', retryAmazon: 'Riprova verifica', amazonRetryStarted: 'Verifica Amazon riavviata.',
     telegramLoginTitle: 'Collegamento Telegram', keepaLoginTitle: 'Accesso al sito Keepa', amazonLoginTitle: 'Accesso ad Amazon',
     accountLoginTitle: 'Collegamento account', followInstructions: 'Segui il passaggio di accesso e invia qui il valore richiesto.',
     confirmWithoutValue: 'Non serve scrivere nulla: premi “Conferma”', localValueNotice: 'Il valore viene inviato solo al processo locale', confirm: 'Conferma',
@@ -100,13 +100,13 @@ const translations = {
     sourceTelegramLabel: 'TELEGRAM', sourceKeepaLabel: 'KEEPA WEBSITE', sourceTelegramName: 'Telegram', sourceKeepaName: 'the Keepa website',
     telegramSessionNotConnected: 'Session not connected', telegramSessionNeedsVerification: 'Session found · identity not verified',
     telegramConnected: '✓ Connected: {account}', amazonConnected: '✓ Connected: {account}', keepaConnected: '✓ Connected: {account}',
-    sessionFoundVerify: 'Session found · press Verify account', monitorStopped: 'Stopped',
+    sessionFoundVerify: 'Session found · press Verify account', amazonCheckingBadge: 'Automatic verification in progress…', amazonCheckingDescription: 'Finish signing in in the Amazon window; the dashboard will detect and save the account automatically.', monitorStopped: 'Stopped',
     monitorRunningOrders: 'Running · orders enabled', monitorRunningTest: 'Running · test mode',
     monitorBadgeRunning: 'RUNNING', monitorBadgeStopped: 'STOPPED', autoBuyActive: 'Automatic purchasing enabled',
     autoBuyInactive: 'Automatic purchasing disabled',
     monitorOrdersDescription: 'Monitoring reads alerts from {source} and can submit orders within your configured limits. Events and results will appear here.',
     monitorTestDescription: 'Monitoring reads alerts from {source} and checks offers without submitting orders. Events and results will appear here.',
-    telegramInProgress: 'Telegram in progress…', keepaInProgress: 'Keepa in progress…', amazonInProgress: 'Amazon in progress…',
+    telegramInProgress: 'Telegram in progress…', keepaInProgress: 'Keepa in progress…', amazonInProgress: 'Checking Amazon…', retryAmazon: 'Retry verification', amazonRetryStarted: 'Amazon verification restarted.',
     telegramLoginTitle: 'Telegram sign-in', keepaLoginTitle: 'Keepa website sign-in', amazonLoginTitle: 'Amazon sign-in',
     accountLoginTitle: 'Account connection', followInstructions: 'Follow the sign-in step and enter the requested value here.',
     confirmWithoutValue: 'Nothing to type: press “Confirm”', localValueNotice: 'This value is sent only to the local process', confirm: 'Confirm',
@@ -143,6 +143,7 @@ const toast = $('#toast');
 let toastTimer;
 let configDirty = false;
 let latestActivity = [];
+let latestInteractiveKind = null;
 let hiddenThrough = '';
 let telegramCredentialsEditorOpen = false;
 let latestConfig = { notificationSource: 'telegram', telegramApiIdSet: false, telegramApiHashSet: false, keepaSenderId: '' };
@@ -248,7 +249,7 @@ function renderActivity(activity) {
 
 function updateInteractive(state) {
   const area = $('#interactiveArea');
-  if (!state.interactiveKind) {
+  if (!state.interactiveKind || state.interactiveKind === 'amazon') {
     area.classList.add('hidden');
     return;
   }
@@ -310,6 +311,7 @@ function updateTelegramCredentials(config) {
 async function refresh() {
   try {
     const state = await api('/api/state');
+    latestInteractiveKind = state.interactiveKind || null;
     const config = state.config;
     latestConfig = config;
     const telegramAccount = state.telegramAccount;
@@ -334,6 +336,7 @@ async function refresh() {
       ? (state.keepaSessionConfirmed ? tr('verificationRequired') : tr('accessRequired'))
       : (state.telegramSessionExists ? tr('verificationRequired') : (config.telegramApiIdSet && config.telegramApiHashSet ? tr('accessRequired') : tr('setupRequired')));
     $('#amazonStatus').textContent = amazonReady ? tr('connected') : state.amazonSessionConfirmed ? tr('verificationRequired') : tr('accessRequired');
+    $('#amazonCardDescription').textContent = state.interactiveKind === 'amazon' ? tr('amazonCheckingDescription') : tr('amazonCardDescription');
     $('#monitorStatus').textContent = state.monitorRunning ? (state.autoBuy ? tr('monitorRunningOrders') : tr('monitorRunningTest')) : tr('monitorStopped');
     $('#monitorBadge').innerHTML = state.monitorRunning ? `<span class="tiny-dot"></span>${tr('monitorBadgeRunning')}` : `<span class="tiny-dot"></span>${tr('monitorBadgeStopped')}`;
     $('#monitorBadge').classList.toggle('running', state.monitorRunning);
@@ -347,10 +350,10 @@ async function refresh() {
     $('#sourceAccountDetail').textContent = displayedSource === 'keepa-web'
       ? (keepaReady ? keepaAccount.displayName : state.keepaSessionConfirmed ? tr('sessionFoundVerify') : tr('accountNotVerified'))
       : (telegramReady ? telegramAccountText(telegramAccount) : state.telegramSessionExists ? tr('sessionFoundVerify') : tr('accountNotVerified'));
-    $('#amazonAccountDetail').textContent = amazonReady ? amazonAccount.displayName : state.amazonSessionConfirmed ? tr('sessionFoundVerify') : tr('accountNotVerified');
+    $('#amazonAccountDetail').textContent = amazonReady ? amazonAccount.displayName : state.interactiveKind === 'amazon' ? tr('amazonCheckingBadge') : state.amazonSessionConfirmed ? tr('sessionFoundVerify') : tr('accountNotVerified');
     $('#telegramSessionBadge').textContent = telegramReady ? tr('telegramConnected', { account: telegramAccountText(telegramAccount) }) : state.telegramSessionExists ? tr('telegramSessionNeedsVerification') : tr('telegramSessionNotConnected');
     $('#telegramSessionBadge').classList.toggle('connected', telegramReady);
-    $('#amazonSessionBadge').textContent = amazonReady ? tr('amazonConnected', { account: amazonAccount.displayName }) : state.amazonSessionConfirmed ? tr('sessionFoundVerify') : tr('notConnected');
+    $('#amazonSessionBadge').textContent = amazonReady ? tr('amazonConnected', { account: amazonAccount.displayName }) : state.interactiveKind === 'amazon' ? tr('amazonCheckingBadge') : state.amazonSessionConfirmed ? tr('sessionFoundVerify') : tr('notConnected');
     $('#amazonSessionBadge').classList.toggle('connected', amazonReady);
     $('#keepaSessionBadge').textContent = keepaReady ? tr('keepaConnected', { account: keepaAccount.displayName }) : state.keepaSessionConfirmed ? tr('sessionFoundVerify') : tr('notConnected');
     $('#keepaSessionBadge').classList.toggle('connected', keepaReady);
@@ -364,12 +367,13 @@ async function refresh() {
     const accessInProgress = Boolean(state.interactiveKind);
     $('#telegramLoginButton').disabled = accessInProgress;
     $('#keepaLoginButton').disabled = accessInProgress;
-    $('#amazonLoginButton').disabled = accessInProgress;
+    const amazonFlow = state.interactiveKind === 'amazon';
+    $('#amazonLoginButton').disabled = accessInProgress && !amazonFlow;
     $('#monitorStartButton').disabled = configDirty || accessInProgress;
     $('#autoBuyEnableButton').disabled = configDirty || accessInProgress;
     $('#telegramLoginButton').textContent = state.interactiveKind === 'telegram' ? tr('telegramInProgress') : state.telegramSessionExists ? tr('verifyAccount') : tr('linkTelegram');
     $('#keepaLoginButton').textContent = state.interactiveKind === 'keepa' ? tr('keepaInProgress') : state.keepaSessionConfirmed ? tr('verifyAccount') : tr('loginKeepa');
-    $('#amazonLoginButton').textContent = state.interactiveKind === 'amazon' ? tr('amazonInProgress') : state.amazonSessionConfirmed ? tr('verifyAccount') : tr('loginAmazon');
+    $('#amazonLoginButton').textContent = state.interactiveKind === 'amazon' ? tr('retryAmazon') : state.amazonSessionConfirmed ? tr('verifyAccount') : tr('loginAmazon');
     renderEvents(state.events || []);
     latestActivity = state.activity || [];
     renderActivity(latestActivity.filter((entry) => entry.time > hiddenThrough));
@@ -421,12 +425,25 @@ $('#telegramCredentialsToggle').addEventListener('click', () => {
 
 async function startLogin(kind) {
   try {
+    const retryAmazon = kind === 'amazon' && latestInteractiveKind === 'amazon';
+    if (retryAmazon) {
+      await api('/api/login/stop', { method: 'POST', body: '{}' });
+      let stopped = false;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        const state = await api('/api/state');
+        latestInteractiveKind = state.interactiveKind || null;
+        if (!latestInteractiveKind) { stopped = true; break; }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      if (!stopped) throw new Error(currentLanguage === 'it' ? 'Il controllo Amazon è ancora in chiusura. Riprova tra qualche secondo.' : 'Amazon verification is still stopping. Try again in a few seconds.');
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
     const result = await api('/api/login/start', { method: 'POST', body: JSON.stringify({ kind }) });
     const sourceName = kind === 'telegram' ? tr('sourceTelegramName') : kind === 'amazon' ? 'Amazon' : tr('sourceKeepaName');
     if (result.alreadyRunning) {
       showToast(tr('loginAlreadyRunning', { source: sourceName }));
     } else {
-      showToast(kind === 'telegram' ? tr('telegramLoginStarted') : tr('loginWindowOpened', { source: sourceName }));
+      showToast(retryAmazon ? tr('amazonRetryStarted') : kind === 'telegram' ? tr('telegramLoginStarted') : tr('loginWindowOpened', { source: sourceName }));
     }
     await refresh();
   } catch (error) {
