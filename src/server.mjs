@@ -86,7 +86,8 @@ async function saveJournal() {
 }
 
 const PLACE_ORDER_SELECTOR = '#submitOrderButtonId input, #submitOrderButtonId, input[name="placeYourOrder1"], #placeOrder input, #placeOrder, #bottomSubmitOrderButtonId input, #bottomSubmitOrderButtonId';
-const ORDER_TOTAL_LABEL = /totale ordine|importo totale|order total|gesamtsumme|gesamtbetrag|total de la commande|montant total|total del pedido|importe total|totaal bestelling|suma zam[oó]wienia|razem|ordersumma|totalt/i;
+const PLACE_ORDER_TEXT = /^\s*(?:acquista ora|effettua (?:l['’])?ordine|invia (?:l['’])?ordine|buy now|place your order|jetzt kaufen|kaufen|bestellen|acheter maintenant|passer (?:votre|la) commande|comprar ahora|realizar pedido|nu kopen|bestelling plaatsen|kup teraz|kupuj[eę] i płac[eę]|k[oö]p nu|slutf[oö]r k[oö]p)\s*$/i;
+const ORDER_TOTAL_LABEL = /totale (?:dell['’])?ordine|importo totale|order total|gesamtsumme|gesamtbetrag|total de la commande|montant total|total del pedido|importe total|totaal bestelling|suma zam[oó]wienia|razem|ordersumma|totalt/i;
 const OFFER_READY_SELECTOR = '#aod-pinned-offer, #aod-offer, .olpOffer, #add-to-cart-button, #outOfStock, #availability';
 const ADD_TO_CART_NAME = /aggiungi al carrello|add to (?:cart|basket)|in den einkaufswagen|ajouter au panier|añadir a (?:la )?cesta|in winkelwagen|do koszyka|kundvagnen/i;
 
@@ -210,17 +211,22 @@ async function getCheckoutTotalCents(page, currency) {
       if (cents !== null) return cents;
     }
   }
-  // Checkout nuovo: riga del riepilogo con l'etichetta "Totale ordine" (o equivalente).
-  const rowText = await page.evaluate((labelSource) => {
+  // Checkout nuovo: l'importo che segue l'etichetta "Order Total"/"Totale ordine" nell'elemento più piccolo che la contiene.
+  const afterLabel = await page.evaluate((labelSource) => {
     const label = new RegExp(labelSource, 'i');
-    const candidates = [...document.querySelectorAll('tr, li, .a-row, [class*="order-summary"] div, [id*="order-summary"] div')];
-    const row = candidates.find((element) => {
+    let best = null;
+    for (const element of document.querySelectorAll('body *')) {
       const text = (element.innerText || '').trim();
-      return text.length < 120 && label.test(text) && /\d/.test(text);
-    });
-    return row ? row.innerText : '';
+      if (!text || text.length > 200) continue;
+      const match = text.match(label);
+      if (!match) continue;
+      const rest = text.slice(match.index + match[0].length);
+      if (!/\d/.test(rest)) continue;
+      if (!best || text.length < best.length) best = { length: text.length, rest };
+    }
+    return best ? best.rest : '';
   }, ORDER_TOTAL_LABEL.source).catch(() => '');
-  return rowText ? extractMarketplaceMinor(rowText.replace(ORDER_TOTAL_LABEL, ' '), currency) : null;
+  return afterLabel ? extractMarketplaceMinor(afterLabel, currency) : null;
 }
 
 async function ensureSingleTargetInCart(page, trigger) {
@@ -295,7 +301,12 @@ async function runTrigger(trigger) {
   if (finalTotal === null) throw new Error('Totale finale non riconoscibile; ordine non inviato.');
   if (finalTotal > trigger.maxTotalCents) throw new Error(`Totale finale ${formatMarketplacePrice(finalTotal, trigger.currency)} oltre il tetto di ${formatMarketplacePrice(trigger.maxTotalCents, trigger.currency)}.`);
 
-  const submit = page.locator(PLACE_ORDER_SELECTOR).first();
+  let submit = page.locator(PLACE_ORDER_SELECTOR).first();
+  if (!(await submit.count().catch(() => 0)) && /\/(?:checkout|gp\/buy)\//i.test(page.url())) {
+    // Ripiego per testo, solo dentro il checkout (sulla pagina prodotto "Compra ora" ha un altro significato).
+    submit = page.locator('input[type="submit"], button, span.a-button-inner').filter({ hasText: PLACE_ORDER_TEXT }).first();
+    if (!(await submit.count().catch(() => 0))) submit = page.getByRole('button', { name: PLACE_ORDER_TEXT }).first();
+  }
   if (!(await submit.count().catch(() => 0))) throw new Error('Pulsante finale non riconosciuto; ordine non inviato.');
   await submit.click();
   await page.waitForTimeout(2500);
