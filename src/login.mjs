@@ -11,24 +11,79 @@ const context = await chromium.launchPersistentContext(settings.profileDir, {
 });
 
 const page = context.pages()[0] || await context.newPage();
-await page.goto(amazonBaseUrl(), { waitUntil: 'domcontentloaded' });
-console.log('Accedi ad Amazon nel browser. Il nome account verrà mostrato nel pannello; non inserire credenziali nel terminale.');
 const prompt = readline.createInterface({ input: process.stdin, output: process.stdout });
-let displayName = '';
-while (!displayName) {
-  await prompt.question('Accedi ad Amazon, poi premi Invio per verificare l’account. ');
-  const greeting = await page.locator('#nav-link-accountList-nav-line-1').first().innerText().catch(() => '');
-  if (!greeting || /accedi|sign\s*in/i.test(greeting)) {
-    console.log('Non vedo ancora un account Amazon collegato. Accedi nella finestra e premi di nuovo Invio.');
-    continue;
-  }
-  displayName = greeting.trim().replace(/^(ciao|hello)\s*,?\s*/i, '').trim();
-  if (!displayName) {
-    console.log('Il nome account Amazon non è leggibile. Verifica l’accesso nella finestra e premi di nuovo Invio.');
+let done = false;
+let checking = false;
+let browserClosed = false;
+let pollTimer;
+let resolveClosed;
+const contextClosed = new Promise((resolve) => { resolveClosed = resolve; });
+context.once('close', () => {
+  browserClosed = true;
+  resolveClosed();
+});
+
+async function detectAmazonAccount() {
+  if (done || checking || browserClosed || page.isClosed()) return false;
+  checking = true;
+  try {
+    const greeting = await page.locator('#nav-link-accountList-nav-line-1').first().innerText({ timeout: 2500 }).catch(() => '');
+    const displayName = greeting.trim()
+      .replace(/^(?:ciao|hello|hallo|bonjour|hola)\s*[,!:\-]?\s*/i, '')
+      .trim();
+    if (!displayName || /^(?:accedi|sign\s*in|account(?:s)?(?:\s|$)|accounts\s*&\s*lists|anmelden|se\s*connecter|iniciar\s*sesi[oó]n)/i.test(displayName)) {
+      return false;
+    }
+
+    const confirmedAt = new Date().toISOString();
+    await writeFile(`${settings.dataDir}/amazon-account.json`, JSON.stringify({ displayName, confirmedAt }, null, 2), 'utf8');
+    await writeFile(`${settings.dataDir}/amazon-login.ok`, confirmedAt, 'utf8');
+    done = true;
+    clearInterval(pollTimer);
+    prompt.close();
+    console.log(`Amazon collegato all’account: ${displayName}.`);
+    await context.close().catch(() => {});
+    return true;
+  } finally {
+    checking = false;
   }
 }
+
+try {
+  await page.goto(amazonBaseUrl(), { waitUntil: 'domcontentloaded' });
+} catch (error) {
+  if (!browserClosed) throw error;
+}
+
+if (!browserClosed) {
+  console.log('Accedi ad Amazon, poi premi Conferma per verificare l’account. Se sei già connesso, il rilevamento avviene automaticamente.');
+  pollTimer = setInterval(() => {
+    detectAmazonAccount().catch((error) => console.error(`Verifica Amazon: ${error.message}`));
+  }, 1200);
+  await detectAmazonAccount();
+}
+
+async function waitForManualVerification() {
+  while (!done && !browserClosed) {
+    await prompt.question('Premi Conferma nel pannello per controllare subito, oppure completa l’accesso nella finestra Amazon.\n');
+    if (done || browserClosed) break;
+    const detected = await detectAmazonAccount();
+    if (!detected && !done && !browserClosed) {
+      console.log('Amazon non mostra ancora un account connesso. Completa l’accesso; il controllo automatico continua.');
+    }
+  }
+}
+
+if (!done && !browserClosed) {
+  const inputTask = waitForManualVerification().catch((error) => {
+    if (!browserClosed && !done) console.error(`Verifica Amazon: ${error.message}`);
+  });
+  await Promise.race([contextClosed, inputTask]);
+}
+
+clearInterval(pollTimer);
 prompt.close();
-await context.close();
-await writeFile(`${settings.dataDir}/amazon-login.ok`, new Date().toISOString(), 'utf8');
-await writeFile(`${settings.dataDir}/amazon-account.json`, JSON.stringify({ displayName, confirmedAt: new Date().toISOString() }, null, 2), 'utf8');
-console.log(`Amazon collegato all’account: ${displayName}.`);
+if (browserClosed && !done) {
+  console.log('Finestra Amazon chiusa prima della verifica. Premi di nuovo Verifica account per controllare la sessione salvata.');
+  process.exitCode = 1;
+}

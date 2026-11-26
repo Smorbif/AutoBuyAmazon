@@ -23,7 +23,7 @@ const translations = {
     connectionsEyebrow: '03 · COLLEGAMENTI', connectAccounts: 'Accedi ai tuoi account', initialAccess: 'Accesso iniziale e verifica',
     telegramCardTitle: 'Collega Telegram', telegramConnectedTitle: 'Account Telegram', telegramCardDescription: 'Accedi una volta per permettere al programma di leggere gli avvisi Keepa.',
     keepaCardTitle: 'Collega il sito Keepa', keepaConnectedTitle: 'Account Keepa', keepaCardDescription: 'Accedi nel browser che si apre, poi conferma nel pannello. Il programma controlla “Notifiche recenti”.',
-    amazonCardTitle: 'Accedi ad Amazon Europa', amazonConnectedTitle: 'Account Amazon', amazonCardDescription: 'L’accesso iniziale si apre su Amazon.it. Ogni ordine segue il marketplace del link Keepa.',
+    amazonCardTitle: 'Accedi ad Amazon Europa', amazonConnectedTitle: 'Account Amazon', amazonCardDescription: 'La sessione Amazon viene rilevata automaticamente; accedi solo se richiesto. Ogni ordine segue il marketplace del link Keepa.',
     interactiveValuePlaceholder: 'Inserisci il valore richiesto', send: 'Invia', enter: 'Invio', cancel: 'Annulla',
     controlEyebrow: '04 · CONTROLLO', startMonitoring: 'Avvia il monitoraggio', startMonitoringButton: 'Avvia monitoraggio', stopMonitoring: 'Ferma',
     enableAutoBuy: 'Abilita acquisto automatico', disableAutoBuy: 'Disattiva acquisto', latestEvents: 'ULTIMI EVENTI',
@@ -81,7 +81,7 @@ const translations = {
     connectionsEyebrow: '03 · CONNECTIONS', connectAccounts: 'Connect your accounts', initialAccess: 'Initial sign-in and verification',
     telegramCardTitle: 'Connect Telegram', telegramConnectedTitle: 'Telegram account', telegramCardDescription: 'Sign in once to let the program read Keepa alerts.',
     keepaCardTitle: 'Connect the Keepa website', keepaConnectedTitle: 'Keepa account', keepaCardDescription: 'Sign in in the browser that opens, then confirm in the dashboard. The program checks “Recent notifications”.',
-    amazonCardTitle: 'Sign in to Amazon Europe', amazonConnectedTitle: 'Amazon account', amazonCardDescription: 'Initial sign-in opens amazon.it. Each order follows the marketplace in its Keepa link.',
+    amazonCardTitle: 'Sign in to Amazon Europe', amazonConnectedTitle: 'Amazon account', amazonCardDescription: 'Amazon sessions are detected automatically; sign in only if asked. Each order follows the marketplace in its Keepa link.',
     interactiveValuePlaceholder: 'Enter the requested value', send: 'Send', enter: 'Enter', cancel: 'Cancel',
     controlEyebrow: '04 · CONTROL', startMonitoring: 'Start monitoring', startMonitoringButton: 'Start monitoring', stopMonitoring: 'Stop',
     enableAutoBuy: 'Enable automatic purchasing', disableAutoBuy: 'Disable purchasing', latestEvents: 'LATEST EVENTS',
@@ -260,7 +260,7 @@ function updateInteractive(state) {
       [/Numero Telegram con prefisso internazionale/i, 'Enter your Telegram phone number with country code:'],
       [/Codice ricevuto da Telegram/i, 'Enter the login code sent by Telegram:'],
       [/Password Telegram di verifica in due passaggi \(se attiva\)/i, 'Enter your Telegram two-step verification password (if enabled):'],
-      [/Accedi ad Amazon, poi premi Invio per verificare l.account/i, 'Sign in to Amazon, then press Enter to verify the account.'],
+      [/Accedi ad Amazon, poi premi Conferma per verificare l.account\. Se sei già connesso, il rilevamento avviene automaticamente/i, 'Sign in to Amazon, then press Confirm to verify the account. If you are already signed in, it will be detected automatically.'],
       [/premi Invio|premi Conferma/i, 'Sign in in the browser, then press Confirm here.']
     ];
     for (const [pattern, replacement] of promptTranslations) {
@@ -271,6 +271,9 @@ function updateInteractive(state) {
   $('#interactiveTitle').textContent = titles[state.interactiveKind] || tr('accountLoginTitle');
   $('#interactivePrompt').textContent = promptText;
   const confirmPrompt = /premi (?:Invio|Conferma)|press (?:Enter|Confirm)/i.test(promptText);
+  const amazonFlow = state.interactiveKind === 'amazon';
+  $('#interactiveInput').classList.toggle('hidden', amazonFlow);
+  $('#interactiveSend').classList.toggle('hidden', amazonFlow);
   $('#interactiveInput').placeholder = confirmPrompt ? tr('confirmWithoutValue') : tr('localValueNotice');
   $('#interactiveInput').type = /Password|password/i.test(promptText) ? 'password' : 'text';
   $('#interactiveEnter').textContent = confirmPrompt ? tr('confirm') : tr('enter');

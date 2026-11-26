@@ -1,7 +1,8 @@
 # Stato dello sviluppo — Keepa Buyer
 
-**Aggiornato:** 25 novembre 2026
+**Aggiornato:** 26 novembre 2026
 **Stato:** prototipo grafico Windows/Linux con due sorgenti notifiche (Telegram o sito Keepa), pronto per una prova controllata. L’estrazione dal sito Keepa e l’acquisto reale Amazon non sono stati collaudati con gli account dell’utente.
+
 ## Stato della revisione corrente
 
 - La revisione include il selettore italiano/inglese nell’intestazione e mantiene la lingua scelta nel browser.
@@ -9,6 +10,14 @@
 - Gli avvisi Keepa vengono associati al marketplace Amazon indicato dal link, tra gli store europei supportati; il Regno Unito resta escluso. I prezzi sono trattati nella valuta del marketplace.
 - Per rendere effettivi i cambiamenti ai listener e al checkout occorre riavviare l’applicazione. La navigazione dell’interfaccia aggiornata basta invece per caricare i testi IT/EN.
 - Stato delle verifiche: controlli statici completati; autenticazione Keepa, parsing live dei marketplace e checkout reale non sono stati provati con gli account dell’utente.
+
+## Correzione login Amazon — 26 novembre 2026
+
+- La finestra usa il profilo Amazon persistente. Se la sessione è già attiva, il programma ora controlla automaticamente il saluto dell’account e salva identità e stato senza richiedere un nuovo login.
+- Se serve autenticarsi, il controllo continua mentre l’utente completa l’accesso; **Conferma** esegue anche una verifica immediata.
+- Chiudendo la finestra prima del completamento, il processo viene rilasciato e il pulsante torna disponibile per riprovare. Durante questo passaggio il pannello mostra solo **Conferma** e **Annulla**.
+- Limite da verificare: il riconoscimento legge il selettore del saluto Amazon; cambiamenti del sito potrebbero richiedere un aggiornamento.
+- Verifica ancora necessaria: provare il flusso con il profilo Amazon reale. Nessun login o ordine è stato eseguito durante questa correzione.
 
 ## Obiettivo
 
