@@ -57,7 +57,7 @@ const translations = {
     loginWindowOpened: 'Finestra di accesso {source} aperta.', loginWaiting: '{source} è già in attesa: completa il login e premi Conferma, oppure Annulla per ripartire.',
     panelUnavailable: 'Pannello non raggiungibile: {message}', monitoringStarted: 'Monitoraggio Keepa avviato.',
     monitoringStopRequested: 'Arresto del monitoraggio richiesto.', autoBuyEnabled: 'Acquisto automatico abilitato.', autoBuyDisabled: 'Acquisto automatico disattivato.',
-    eventProduct: 'Prodotto', eventWaiting: 'in attesa', eventQueued: 'In coda', eventProcessing: 'In elaborazione', eventDryRun: 'Prova', eventOrdered: 'Ordinato', eventStopped: 'Fermato'
+    eventProduct: 'Prodotto', eventWaiting: 'in attesa', eventQueued: 'In coda', eventProcessing: 'In elaborazione', eventDryRun: 'Prova', eventOrdered: 'Ordinato', eventPaymentDeclined: 'Ordine salvato, pagamento rifiutato', eventStopped: 'Fermato'
   },
   en: {
     documentTitle: 'Keepa Buyer — Dashboard', brandSubtitle: 'Amazon Europe · Resale', mainNavigation: 'Main navigation',
@@ -115,7 +115,7 @@ const translations = {
     loginWaiting: '{source} is already waiting: finish sign-in and press Confirm, or Cancel to start over.',
     panelUnavailable: 'Dashboard unavailable: {message}', monitoringStarted: 'Keepa monitoring started.',
     monitoringStopRequested: 'Monitoring stop requested.', autoBuyEnabled: 'Automatic purchasing enabled.', autoBuyDisabled: 'Automatic purchasing disabled.',
-    eventProduct: 'Product', eventWaiting: 'waiting', eventQueued: 'Queued', eventProcessing: 'Processing', eventDryRun: 'Test', eventOrdered: 'Ordered', eventStopped: 'Stopped'
+    eventProduct: 'Product', eventWaiting: 'waiting', eventQueued: 'Queued', eventProcessing: 'Processing', eventDryRun: 'Test', eventOrdered: 'Ordered', eventPaymentDeclined: 'Order saved, payment declined', eventStopped: 'Stopped'
   }
 };
 let currentLanguage = localStorage.getItem('keepa-buyer-language') === 'en' ? 'en' : 'it';
@@ -198,7 +198,7 @@ function eventPrice(event) {
 
 function eventStatus(status) {
   const labels = {
-    queued: tr('eventQueued'), processing: tr('eventProcessing'), dry_run: tr('eventDryRun'), ordered: tr('eventOrdered'), stopped: tr('eventStopped')
+    queued: tr('eventQueued'), processing: tr('eventProcessing'), dry_run: tr('eventDryRun'), ordered: tr('eventOrdered'), payment_declined: tr('eventPaymentDeclined'), stopped: tr('eventStopped')
   };
   return labels[status] || status || tr('eventQueued');
 }
