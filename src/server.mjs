@@ -85,6 +85,9 @@ async function saveJournal() {
   await writeFile(journalPath, JSON.stringify(journal, null, 2), 'utf8');
 }
 
+const PLACE_ORDER_SELECTOR = '#submitOrderButtonId input, #submitOrderButtonId, input[name="placeYourOrder1"], #placeOrder input, #placeOrder, #bottomSubmitOrderButtonId input, #bottomSubmitOrderButtonId';
+const PLACE_ORDER_TEXT = /^\s*(?:acquista ora|effettua (?:l['’])?ordine|invia (?:l['’])?ordine|buy now|place your order|jetzt kaufen|kaufen|bestellen|acheter maintenant|passer (?:votre|la) commande|comprar ahora|realizar pedido|nu kopen|bestelling plaatsen|kup teraz|kupuj[eę] i płac[eę]|k[oö]p nu|slutf[oö]r k[oö]p)\s*$/i;
+const ORDER_TOTAL_LABEL = /totale (?:dell['’])?ordine|importo totale|order total|gesamtsumme|gesamtbetrag|total de la commande|montant total|total del pedido|importe total|totaal bestelling|suma zam[oó]wienia|razem|ordersumma|totalt/i;
 const OFFER_READY_SELECTOR = '#aod-pinned-offer, #aod-offer, .olpOffer, #add-to-cart-button, #outOfStock, #availability';
 const ADD_TO_CART_NAME = /aggiungi al carrello|add to (?:cart|basket)|in den einkaufswagen|ajouter au panier|añadir a (?:la )?cesta|in winkelwagen|do koszyka|kundvagnen/i;
 
@@ -208,7 +211,22 @@ async function getCheckoutTotalCents(page, currency) {
       if (cents !== null) return cents;
     }
   }
-  return null;
+  // Checkout nuovo: l'importo che segue l'etichetta "Order Total"/"Totale ordine" nell'elemento più piccolo che la contiene.
+  const afterLabel = await page.evaluate((labelSource) => {
+    const label = new RegExp(labelSource, 'i');
+    let best = null;
+    for (const element of document.querySelectorAll('body *')) {
+      const text = (element.innerText || '').trim();
+      if (!text || text.length > 200) continue;
+      const match = text.match(label);
+      if (!match) continue;
+      const rest = text.slice(match.index + match[0].length);
+      if (!/\d/.test(rest)) continue;
+      if (!best || text.length < best.length) best = { length: text.length, rest };
+    }
+    return best ? best.rest : '';
+  }, ORDER_TOTAL_LABEL.source).catch(() => '');
+  return afterLabel ? extractMarketplaceMinor(afterLabel, currency) : null;
 }
 
 async function ensureSingleTargetInCart(page, trigger) {
@@ -241,6 +259,7 @@ async function runTrigger(trigger) {
     console.warn(`[${trigger.notificationId}] ${message}`);
   }
 
+  const productTitle = (await page.locator('#productTitle').first().innerText({ timeout: 3000 }).catch(() => '')).trim();
   const offer = await detectOffer(page, trigger);
   console.log(`[${trigger.notificationId}] Offerta su ${trigger.marketplaceHost}: ${formatMarketplacePrice(offer.cents, trigger.currency)} entro il prezzo dell’avviso Keepa (condizione ${describeCondition(trigger.condition)}).`);
 
@@ -262,18 +281,32 @@ async function runTrigger(trigger) {
   if (!(await checkoutButton.count().catch(() => 0))) throw new Error('Pulsante checkout non riconosciuto; articolo lasciato nel carrello.');
   await checkoutButton.click();
   await page.waitForLoadState('domcontentloaded').catch(() => {});
-  await page.waitForTimeout(1200);
+  // Il riepilogo del checkout si carica in modo asincrono: aspetta il pulsante finale.
+  await page.waitForSelector(PLACE_ORDER_SELECTOR, { timeout: 25000 }).catch(() => {});
+  await page.waitForTimeout(1500);
 
   if (/\/ap\/signin|\/signin/i.test(page.url())) throw new Error('Amazon richiede un nuovo accesso; nessun ordine inviato.');
   if (amazonMarketplaceFromUrl(page.url()) !== trigger.marketplaceHost) throw new Error('Checkout fuori dal marketplace indicato dall’avviso Keepa; ordine non inviato.');
   const summaryText = normalizeText(await page.locator('body').innerText().catch(() => ''));
-  const targetCheckoutLink = page.locator(`a[href*="${trigger.asin}"]`).first();
-  if (!(await targetCheckoutLink.count().catch(() => 0))) throw new Error('Riepilogo checkout senza link prodotto verificabile; ordine non inviato.');
+  // Il checkout attuale spesso mostra gli articoli senza link: verifica con link, ASIN nell'HTML o titolo del prodotto.
+  const hasLink = await page.locator(`a[href*="${trigger.asin}"], [data-asin="${trigger.asin}"]`).count().catch(() => 0);
+  const hasAsin = hasLink || (await page.content().catch(() => '')).includes(trigger.asin);
+  const titleKey = normalizeText(productTitle).slice(0, 35);
+  const hasTitle = titleKey.length >= 12 && summaryText.includes(titleKey);
+  if (!hasAsin && !hasTitle) {
+    await page.screenshot({ path: path.join(settings.dataDir, `checkout-debug-${trigger.asin}.png`) }).catch(() => {});
+    throw new Error('Nel riepilogo checkout non trovo né l’ASIN né il titolo del prodotto; ordine non inviato. Articolo lasciato nel carrello.');
+  }
   const finalTotal = await getCheckoutTotalCents(page, trigger.currency);
   if (finalTotal === null) throw new Error('Totale finale non riconoscibile; ordine non inviato.');
   if (finalTotal > trigger.maxTotalCents) throw new Error(`Totale finale ${formatMarketplacePrice(finalTotal, trigger.currency)} oltre il tetto di ${formatMarketplacePrice(trigger.maxTotalCents, trigger.currency)}.`);
 
-  const submit = page.locator('#submitOrderButtonId').first();
+  let submit = page.locator(PLACE_ORDER_SELECTOR).first();
+  if (!(await submit.count().catch(() => 0)) && /\/(?:checkout|gp\/buy)\//i.test(page.url())) {
+    // Ripiego per testo, solo dentro il checkout (sulla pagina prodotto "Compra ora" ha un altro significato).
+    submit = page.locator('input[type="submit"], button, span.a-button-inner').filter({ hasText: PLACE_ORDER_TEXT }).first();
+    if (!(await submit.count().catch(() => 0))) submit = page.getByRole('button', { name: PLACE_ORDER_TEXT }).first();
+  }
   if (!(await submit.count().catch(() => 0))) throw new Error('Pulsante finale non riconosciuto; ordine non inviato.');
   await submit.click();
   await page.waitForTimeout(2500);
