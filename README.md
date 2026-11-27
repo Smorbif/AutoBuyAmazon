@@ -101,3 +101,10 @@ Il server è accessibile solo su localhost. L’endpoint `POST /trigger` richied
 ```
 
 `maxItemCents` e `maxTotalCents` sono unità minori della valuta del marketplace (ad esempio centesimi EUR, grosz PLN o öre SEK). Sono disponibili anche `GET /health` e `GET /events/<notificationId>`.
+
+
+## Avvio automatico
+
+- Il monitoraggio parte da solo all'apertura del programma e, se si chiude per un errore, viene riavviato con attese crescenti (10 s, 20 s… fino a 5 minuti). Per disattivarlo: `AUTO_START_MONITOR=false` nel file `.env`. Se premi **Ferma** nel pannello, resta fermo fino a quando lo riavvii.
+- **Windows:** doppio clic su `Attiva avvio automatico.cmd` per avviare Keepa Buyer in background 20 secondi dopo ogni accesso a Windows, senza aprire il pannello (http://127.0.0.1:8788). Per toglierlo usa `Disattiva avvio automatico.cmd`. Non servono permessi di amministratore.
+- **VPS Linux:** `sudo bash deploy/install-linux-service.sh` installa il servizio systemd `keepa-buyer`: parte all'avvio del server, riparte se si chiude e usa il browser senza schermo (`HEADLESS=true`).
