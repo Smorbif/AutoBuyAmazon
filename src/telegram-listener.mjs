@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { TelegramClient } from 'teleproto';
+import { TelegramClient, Api } from 'teleproto';
 import { StringSession } from 'teleproto/sessions';
 import { NewMessage } from 'teleproto/events';
 import { settings, persistEnvValue, marketplaceCurrency, formatMarketplacePrice } from './common.mjs';
@@ -20,7 +20,10 @@ try {
 }
 
 const client = new TelegramClient(new StringSession(session), settings.telegramApiId, settings.telegramApiHash, {
-  connectionRetries: 5
+  connectionRetries: 5,
+  reconnectRetries: Infinity,
+  autoReconnect: true,
+  retryDelay: 2000
 });
 await client.connect();
 await client.getMe();
@@ -76,7 +79,7 @@ async function detectKeepaSenderFromHistory() {
 if (!settings.keepaSenderId) await detectKeepaSenderFromHistory();
 console.log('Ascolto locale delle notifiche Keepa Telegram.');
 
-async function forwardAlert(message) {
+async function forwardAlert(message, { catchUp = false } = {}) {
   const text = String(message.message || '');
   if (parseKeepaAlert(text) === null) return;
 
@@ -130,14 +133,62 @@ async function forwardAlert(message) {
     const body = await response.text();
     throw new Error(`Purchase runner ha risposto ${response.status}: ${body}`);
   }
+const result = await response.json();
+  if (result.status === 'duplicate_ignored') return;
+  if (catchUp) console.log('Avviso Keepa arrivato mentre il bot era scollegato: lo elaboro ora.');
   console.log(`Keepa alert inoltrato: sender ${senderId}, ASIN ${asin}, marketplace ${marketplaceHost}, tetto articolo ${formatMarketplacePrice(priceCents, currency)}, condizione ${describeCondition(trigger.condition)}` +
     `${trigger.condition.label ? ` ("${trigger.condition.label}")` : ''}. ` +
-    `Stato: ${(await response.json()).status}.`);
+    `Stato: ${result.status}.`);
 }
 
 client.addEventHandler((event) => {
   forwardAlert(event.message).catch((error) => console.error(`Errore lettura alert: ${error.message}`));
 }, new NewMessage({ incoming: true }));
+
+// Recupera gli avvisi Keepa arrivati mentre il listener era scollegato (gli avvisi già elaborati vengono scartati dal server).
+const CATCH_UP_MINUTES = Number(process.env.KEEPA_CATCH_UP_MINUTES || 30);
+async function catchUpMissedAlerts() {
+  const senderId = settings.keepaSenderId;
+  if (!senderId || CATCH_UP_MINUTES <= 0) return;
+  try {
+    await client.getDialogs({ limit: 50 }).catch(() => {});
+    const messages = await client.getMessages(senderId, { limit: 20 });
+    const since = Date.now() / 1000 - CATCH_UP_MINUTES * 60;
+    const recent = messages.filter((message) => !message.out && Number(message.date) >= since).reverse();
+    for (const message of recent) await forwardAlert(message, { catchUp: true });
+  } catch (error) {
+    console.warn(`Recupero avvisi persi non riuscito: ${error.message}`);
+  }
+}
+
+// Controllo di salute: se Telegram non risponde per 3 controlli di fila il listener si chiude
+// e il server lo riavvia con una connessione nuova.
+const HEALTH_INTERVAL_MS = 60_000;
+const HEALTH_MAX_FAILURES = 3;
+let healthFailures = 0;
+async function checkTelegramHealth() {
+  try {
+    await Promise.race([
+      client.invoke(new Api.updates.GetState()),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('nessuna risposta entro 20 secondi')), 20_000))
+    ]);
+    if (healthFailures > 0) {
+      console.log('Connessione Telegram ripristinata.');
+      await catchUpMissedAlerts();
+    }
+    healthFailures = 0;
+  } catch (error) {
+    healthFailures += 1;
+    console.warn(`Telegram non raggiungibile (controllo ${healthFailures} di ${HEALTH_MAX_FAILURES}): ${error.message}`);
+    if (healthFailures >= HEALTH_MAX_FAILURES) {
+      console.error('Connessione Telegram persa da troppo tempo: riavvio il monitoraggio.');
+      await Promise.race([client.disconnect().catch(() => {}), new Promise((resolve) => setTimeout(resolve, 3000))]);
+      process.exit(1);
+    }
+  }
+}
+setInterval(() => { checkTelegramHealth(); }, HEALTH_INTERVAL_MS);
+catchUpMissedAlerts();
 
 process.on('SIGINT', async () => {
   await client.disconnect();

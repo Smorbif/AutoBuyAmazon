@@ -51,6 +51,12 @@ function humanizeChildLine(rawLine, level, stack) {
     [/\[INFO\].*Connected to dc/i, { level: 'info', message: 'Telegram: connesso ai server.' }],
     [/\[INFO\].*(?:Disconnecting|Disconnected|connection closed)/i, { level: 'warning', message: 'Telegram: connessione chiusa.' }],
     [/(?:Reconnecting|Connection to .* lost|reconnect)/i, { level: 'warning', message: 'Telegram: connessione persa, riconnessione in corso…' }],
+    [/failed \(attempt (\d+)\):\s*(?:connect\s+)?(E[A-Z]+)/i, (m) => ({ level: 'warning', message: `Telegram: ${{
+      ENETUNREACH: 'rete non raggiungibile (internet assente?)', ECONNREFUSED: 'connessione rifiutata', ETIMEDOUT: 'tempo di connessione scaduto',
+      ENOTFOUND: 'indirizzo dei server non trovato (DNS)', ECONNRESET: 'connessione interrotta', EAI_AGAIN: 'DNS temporaneamente non disponibile'
+    }[m[2].toUpperCase()] || m[2]}; nuovo tentativo ${m[1]}…` })],
+    [/Connessione Telegram ripristinata/i, { level: 'success', message: 'Telegram: connessione ripristinata.' }],
+    [/Maximum reconnection retries reached/i, { level: 'error', message: 'Telegram: tentativi di riconnessione esauriti.' }],
     [/\[(?:INFO|DEBUG)\]/i, null],
     [/\[WARN\]\s*-?\s*\[?(.*?)\]?$/i, (m) => ({ level: 'warning', message: `Telegram: ${m[1]}` })],
     [/\[ERROR\]\s*-?\s*\[?(.*?)\]?$/i, (m) => ({ level: 'error', message: `Telegram: ${m[1]}` })],
