@@ -57,3 +57,9 @@ button:disabled{opacity:.56;cursor:wait;transform:none!important;box-shadow:none
 .log-row.success .log-icon{background:#e5f4ec;color:#23795a}.log-row.warning .log-icon{background:#fbf1e3;color:#a06b2c}.log-row.error .log-icon{background:#fbe9e7;color:#b5483d}
 .log-row .log-message{font-size:10px;line-height:1.45}
 .log-row .log-time{font-size:9px;white-space:nowrap}
+
+/* Ordini creati (pagati o da pagare a mano): sfondo verde */
+.event-card.status-ordered,.event-card.status-payment_declined{background:#eef8f2;border-color:#cfe9db;border-left-color:#2f9b6f}
+.status-ordered .event-state,.status-payment_declined .event-state{background:#2f9b6f;color:#fff}
+.status-ordered .price-item,.status-payment_declined .price-item{background:#e0f1e8}
+.event-note{font-size:10px;line-height:1.45;color:#2b6f52;background:#e0f1e8;border-radius:6px;padding:6px 8px}

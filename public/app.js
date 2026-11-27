@@ -57,7 +57,7 @@ const translations = {
     loginWindowOpened: 'Finestra di accesso {source} aperta.', loginWaiting: '{source} è già in attesa: completa il login e premi Conferma, oppure Annulla per ripartire.',
     panelUnavailable: 'Pannello non raggiungibile: {message}', monitoringStarted: 'Monitoraggio Keepa avviato.',
     monitoringStopRequested: 'Arresto del monitoraggio richiesto.', autoBuyEnabled: 'Acquisto automatico abilitato.', autoBuyDisabled: 'Acquisto automatico disattivato.',
-    eventProduct: 'Prodotto', eventWaiting: 'in attesa', eventQueued: 'In coda', eventProcessing: 'In elaborazione', eventDryRun: 'Prova', eventOrdered: 'Ordinato', eventPaymentDeclined: 'Ordine salvato, pagamento rifiutato', eventStopped: 'Fermato'
+    eventProduct: 'Prodotto', eventWaiting: 'in attesa', eventQueued: 'In coda', eventProcessing: 'In elaborazione', eventDryRun: 'Prova', eventOrdered: 'Ordinato', eventPaymentDeclined: 'Ordine creato · da pagare', eventStopped: 'Fermato'
   },
   en: {
     documentTitle: 'Keepa Buyer — Dashboard', brandSubtitle: 'Amazon Europe · Resale', mainNavigation: 'Main navigation',
@@ -115,7 +115,7 @@ const translations = {
     loginWaiting: '{source} is already waiting: finish sign-in and press Confirm, or Cancel to start over.',
     panelUnavailable: 'Dashboard unavailable: {message}', monitoringStarted: 'Keepa monitoring started.',
     monitoringStopRequested: 'Monitoring stop requested.', autoBuyEnabled: 'Automatic purchasing enabled.', autoBuyDisabled: 'Automatic purchasing disabled.',
-    eventProduct: 'Product', eventWaiting: 'waiting', eventQueued: 'Queued', eventProcessing: 'Processing', eventDryRun: 'Test', eventOrdered: 'Ordered', eventPaymentDeclined: 'Order saved, payment declined', eventStopped: 'Stopped'
+    eventProduct: 'Product', eventWaiting: 'waiting', eventQueued: 'Queued', eventProcessing: 'Processing', eventDryRun: 'Test', eventOrdered: 'Ordered', eventPaymentDeclined: 'Order created · to be paid', eventStopped: 'Stopped'
   }
 };
 let currentLanguage = localStorage.getItem('keepa-buyer-language') === 'en' ? 'en' : 'it';
@@ -264,6 +264,11 @@ function renderEvents(events) {
 
     card.append(head, meta);
     if (priceParts.length) card.append(prices);
+    if (event.status === 'payment_declined') {
+      card.append(element('div', 'event-note', it
+        ? 'Ordine creato su Amazon. Il pagamento automatico è stato rifiutato: completalo a mano da Resi e ordini.'
+        : 'Order created on Amazon. The automatic payment was declined: complete it manually from Returns & Orders.'));
+    }
     if (event.error) card.append(element('div', 'event-reason', event.error));
     if (event.asin && event.marketplaceHost) {
       const link = element('a', 'event-link', it ? 'Apri su Amazon ↗' : 'Open on Amazon ↗');

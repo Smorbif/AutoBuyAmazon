@@ -762,7 +762,7 @@ const server = http.createServer(async (request, response) => {
       const outcome = {
         dry_run: ['success', `Prova riuscita: ${trigger.asin} su ${market} disponibile a ${price}. Nessun ordine inviato (acquisto automatico disattivato).`],
         ordered: ['success', `Ordine completato: ${trigger.asin} su ${market} a ${price}.`],
-        payment_declined: ['warning', `Ordine ${result.orderId || ''} creato ma pagamento rifiutato dalla banca: salvato da completare su Amazon.`]
+        payment_declined: ['success', `Ordine ${result.orderId || ''} creato: ${trigger.asin} su ${market} a ${price}. Pagamento da completare a mano su Amazon.`]
       }[result.status];
       if (outcome) logActivity(outcome[0], outcome[1]);
       console.log(`[${trigger.notificationId}] ${result.status}`);
