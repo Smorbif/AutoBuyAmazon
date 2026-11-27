@@ -85,6 +85,8 @@ export function reloadSettings() {
     profileDir: path.resolve(projectRoot, process.env.PROFILE_DIR || './data/amazon-profile'),
     autoBuy: /^true$/i.test(process.env.AUTO_BUY || 'false'),
     headless: /^true$/i.test(process.env.HEADLESS || 'false'),
+    // Avvia il monitoraggio all'apertura del programma e lo riavvia se si chiude per errore.
+    autoStartMonitor: !/^false$/i.test(process.env.AUTO_START_MONITOR || 'true'),
     telegramApiId: Number(process.env.TELEGRAM_API_ID || 0),
     telegramApiHash: process.env.TELEGRAM_API_HASH || '',
     keepaSenderId: process.env.KEEPA_SENDER_ID || '',

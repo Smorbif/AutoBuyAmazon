@@ -188,12 +188,25 @@ function telegramAccountText(account) {
   return [name, handle].filter(Boolean).join(' · ');
 }
 
-function eventPrice(event) {
-  if (!event.offerCents) return tr('eventWaiting');
+function eventCurrency(event) {
+  if (event.currency) return event.currency;
   const host = String(event.marketplaceHost || '');
-  const currency = host.endsWith('.pl') ? 'PLN' : host.endsWith('.se') ? 'SEK' : 'EUR';
+  return host.endsWith('.pl') ? 'PLN' : host.endsWith('.se') ? 'SEK' : 'EUR';
+}
+
+function formatMoney(cents, event) {
+  if (!cents) return '';
   const locale = currentLanguage === 'it' ? 'it-IT' : 'en-GB';
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(event.offerCents / 100);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: eventCurrency(event) }).format(cents / 100);
+}
+
+function formatWhen(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  const locale = currentLanguage === 'it' ? 'it-IT' : 'en-GB';
+  const today = new Date().toDateString() === date.toDateString();
+  const time = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return today ? `${currentLanguage === 'it' ? 'Oggi' : 'Today'} ${time}` : `${date.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })} ${time}`;
 }
 
 function eventStatus(status) {
@@ -203,6 +216,13 @@ function eventStatus(status) {
   return labels[status] || status || tr('eventQueued');
 }
 
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
 function renderEvents(events) {
   const list = $('#eventsList');
   $('#eventCount').textContent = String(events.length);
@@ -210,20 +230,49 @@ function renderEvents(events) {
     list.innerHTML = `<div class="empty-state"><span>◷</span><strong>${tr('noAlerts')}</strong><small>${tr('alertsWillAppear')}</small></div>`;
     return;
   }
+  const it = currentLanguage === 'it';
   list.replaceChildren(...events.map((event) => {
-    const row = document.createElement('div');
-    row.className = 'event-row';
-    const title = document.createElement('div');
-    title.className = 'event-title';
-    title.textContent = `${event.asin || tr('eventProduct')} · ${eventPrice(event)}`;
-    const state = document.createElement('span');
-    state.className = 'event-state';
-    state.textContent = eventStatus(event.status);
-    const sub = document.createElement('div');
-    sub.className = 'event-sub';
-    sub.textContent = event.error || new Date(event.createdAt || Date.now()).toLocaleString(currentLanguage === 'it' ? 'it-IT' : 'en-GB');
-    row.append(title, state, sub);
-    return row;
+    const card = element('div', `event-card status-${event.status || 'queued'}`);
+    const head = element('div', 'event-head');
+    const title = element('div', 'event-title', event.productTitle || event.asin || tr('eventProduct'));
+    title.title = event.productTitle || '';
+    head.append(title, element('span', 'event-state', eventStatus(event.status)));
+
+    const meta = element('div', 'event-meta');
+    const when = event.finishedAt || event.startedAt || event.createdAt;
+    const market = String(event.marketplaceHost || '').replace(/^www\./, '');
+    for (const part of [
+      `🕒 ${formatWhen(when)}`,
+      market,
+      event.asin,
+      event.condition,
+      event.mode ? (event.mode === 'buy' ? (it ? 'acquisto attivo' : 'auto-buy on') : (it ? 'prova' : 'test')) : ''
+    ].filter(Boolean)) meta.append(element('span', '', part));
+
+    const prices = element('div', 'event-prices');
+    const priceParts = [
+      [it ? 'Prezzo massimo' : 'Max price', formatMoney(event.maxItemCents, event)],
+      [it ? 'Offerta trovata' : 'Offer found', formatMoney(event.offerCents, event)],
+      [it ? 'Totale ordine' : 'Order total', formatMoney(event.finalTotalCents, event)],
+      [it ? 'Ordine' : 'Order', event.orderId || '']
+    ].filter(([, value]) => value);
+    for (const [label, value] of priceParts) {
+      const item = element('span', 'price-item');
+      item.append(element('small', '', label), element('b', '', value));
+      prices.append(item);
+    }
+
+    card.append(head, meta);
+    if (priceParts.length) card.append(prices);
+    if (event.error) card.append(element('div', 'event-reason', event.error));
+    if (event.asin && event.marketplaceHost) {
+      const link = element('a', 'event-link', it ? 'Apri su Amazon ↗' : 'Open on Amazon ↗');
+      link.href = `https://${event.marketplaceHost}/dp/${event.asin}`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      card.append(link);
+    }
+    return card;
   }));
 }
 
@@ -233,16 +282,15 @@ function renderActivity(activity) {
     list.innerHTML = `<div class="empty-log">${tr('waitingActivity')}</div>`;
     return;
   }
+  const icons = { success: '✓', warning: '!', error: '✕', info: '•' };
   list.replaceChildren(...activity.slice().reverse().map((entry) => {
-    const row = document.createElement('div');
-    row.className = `log-row ${entry.level || 'info'}`;
-    const time = document.createElement('span');
-    time.className = 'log-time';
-    time.textContent = new Date(entry.time).toLocaleTimeString(currentLanguage === 'it' ? 'it-IT' : 'en-GB');
-    const message = document.createElement('span');
-    message.className = 'log-message';
-    message.textContent = entry.message;
-    row.append(time, message);
+    const level = entry.level || 'info';
+    const row = element('div', `log-row ${level}`);
+    row.append(
+      element('span', 'log-icon', icons[level] || '•'),
+      element('span', 'log-message', entry.message),
+      element('span', 'log-time', formatWhen(entry.time))
+    );
     return row;
   }));
 }

@@ -24,6 +24,9 @@ let queue = Promise.resolve();
 let interactiveChild = null;
 let interactiveKind = null;
 let monitorChild = null;
+let monitorStoppedByUser = false;
+let monitorRestartTimer = null;
+let monitorRestartDelay = 10000;
 let amazonLoginContext = null;
 const activityLog = [];
 
@@ -32,9 +35,43 @@ function logActivity(level, message) {
   if (activityLog.length > 120) activityLog.splice(0, activityLog.length - 120);
 }
 
+// Traduce l'output tecnico dei processi figli in messaggi comprensibili; restituisce null per nascondere il rumore.
+function humanizeChildLine(rawLine, level, stack) {
+  const line = rawLine.replace(/\u001b\[[0-9;]*m/g, '').replace(/\[\d+m/g, '').trim();
+  if (!line) return null;
+  // Traccia di un errore Node: nasconde file, righe di codice e "at ...", tiene solo il messaggio.
+  if (/^at\s|^\^+$|^Node\.js v\d|node:internal|^\s*\}\s*$|^\{$/.test(line)) return null;
+  if (/\.(?:m?js|cjs):\d+(?::\d+)?\)?$/.test(line) && !/^(?:\w*Error|Errore)/.test(line)) { stack.skipping = true; return null; }
+  const errorMatch = line.match(/^(?:\w*Error|Errore):\s*(.+)$/);
+  if (errorMatch) { stack.skipping = false; return { level: 'error', message: `Errore: ${errorMatch[1]}` }; }
+  if (stack.skipping) return null;
+
+  const rules = [
+    [/Running teleproto version/i, null],
+    [/\[INFO\].*Connected to dc/i, { level: 'info', message: 'Telegram: connesso ai server.' }],
+    [/\[INFO\].*(?:Disconnecting|Disconnected|connection closed)/i, { level: 'warning', message: 'Telegram: connessione chiusa.' }],
+    [/(?:Reconnecting|Connection to .* lost|reconnect)/i, { level: 'warning', message: 'Telegram: connessione persa, riconnessione in corso…' }],
+    [/\[(?:INFO|DEBUG)\]/i, null],
+    [/\[WARN\]\s*-?\s*\[?(.*?)\]?$/i, (m) => ({ level: 'warning', message: `Telegram: ${m[1]}` })],
+    [/\[ERROR\]\s*-?\s*\[?(.*?)\]?$/i, (m) => ({ level: 'error', message: `Telegram: ${m[1]}` })],
+    [/Ascolto locale delle notifiche Keepa Telegram/i, { level: 'success', message: 'In ascolto degli avvisi Keepa su Telegram.' }],
+    [/Keepa alert inoltrato: .*ASIN (\w+), marketplace (?:www\.)?([\w.]+), tetto articolo (.+?), condizione (.+?)(?: \(".*"\))?\. Stato/i,
+      (m) => ({ level: 'info', message: `Nuovo avviso Keepa: ${m[1]} su ${m[2]} · prezzo massimo ${m[3]} · ${m[4]}. Verifica in corso…` })],
+    [/Keepa alert (\d+) ignorato: (.+)$/i, (m) => ({ level: 'warning', message: `Messaggio Keepa ignorato: ${m[2]}` })]
+  ];
+  for (const [pattern, result] of rules) {
+    const match = line.match(pattern);
+    if (!match) continue;
+    if (result === null) return null;
+    return typeof result === 'function' ? result(match) : result;
+  }
+  return { level, message: line };
+}
+
 function attachChild(child, label) {
   let pending = '';
   let promptTimer;
+  const stack = { skipping: false };
   const consume = (chunk, level) => {
     pending += chunk.toString();
     const lines = pending.split(/\r?\n/);
@@ -45,13 +82,15 @@ function attachChild(child, label) {
         reloadSettings();
         logActivity('success', 'ID mittente Keepa rilevato automaticamente e salvato.');
       } else if (line.trim()) {
-        logActivity(level, `${label}: ${line.trim()}`);
+        const friendly = humanizeChildLine(line, level, stack);
+        if (friendly) logActivity(friendly.level, friendly.message);
       }
     }
     clearTimeout(promptTimer);
     if (pending.trim()) {
       promptTimer = setTimeout(() => {
-        if (pending.trim()) logActivity(level, `${label}: ${pending.trim()}`);
+        const friendly = pending.trim() && humanizeChildLine(pending, level, stack);
+        if (friendly) logActivity(friendly.level, friendly.message);
         pending = '';
       }, 250);
     }
@@ -61,14 +100,46 @@ function attachChild(child, label) {
   child.on('error', (error) => logActivity('error', `${label}: ${error.message}`));
   child.on('close', (code) => {
     clearTimeout(promptTimer);
-    if (pending.trim()) logActivity(code === 0 ? 'info' : 'error', `${label}: ${pending.trim()}`);
-    logActivity(code === 0 ? 'success' : 'warning', `${label}: terminato (codice ${code}).`);
+    const lastLine = pending.trim() && humanizeChildLine(pending, code === 0 ? 'info' : 'error', stack);
+    if (lastLine) logActivity(lastLine.level, lastLine.message);
+    if (child === monitorChild) {
+      logActivity(code === null || code === 0 ? 'info' : 'error', code === null || code === 0
+        ? 'Monitoraggio fermato.'
+        : `Monitoraggio interrotto per un errore (codice ${code}).`);
+    } else {
+      logActivity(code === 0 ? 'success' : 'warning', code === 0 ? `${label}: completato.` : `${label}: chiuso${code === null ? '' : ` (codice ${code})`}.`);
+    }
     if (child === interactiveChild) {
       interactiveChild = null;
       interactiveKind = null;
     }
-    if (child === monitorChild) monitorChild = null;
+    if (child === monitorChild) {
+      monitorChild = null;
+      if (!monitorStoppedByUser && settings.autoStartMonitor) scheduleMonitorRestart(code);
+    }
   });
+}
+
+function scheduleMonitorRestart(code) {
+  if (monitorRestartTimer) return;
+  const delay = monitorRestartDelay;
+  monitorRestartDelay = Math.min(monitorRestartDelay * 2, 5 * 60 * 1000);
+  logActivity('warning', `Riavvio automatico del monitoraggio tra ${Math.round(delay / 1000)} secondi.`);
+  monitorRestartTimer = setTimeout(() => {
+    monitorRestartTimer = null;
+    tryStartMonitoring('riavvio automatico');
+  }, delay);
+}
+
+function tryStartMonitoring(reason) {
+  if (monitorChild || monitorStoppedByUser) return;
+  try {
+    startMonitoring();
+    // Se resta attivo per 2 minuti, l'attesa tra i riavvii torna al minimo.
+    setTimeout(() => { if (monitorChild) monitorRestartDelay = 10000; }, 120000);
+  } catch (error) {
+    logActivity('warning', `Monitoraggio non avviato (${reason}): ${error.message}`);
+  }
 }
 
 async function getContext() {
@@ -270,7 +341,9 @@ async function runTriggerOnPage(page, trigger) {
   }
 
   const productTitle = (await page.locator('#productTitle').first().innerText({ timeout: 3000 }).catch(() => '')).trim();
+  trigger.productTitle = productTitle.slice(0, 200);
   const offer = await detectOffer(page, trigger);
+  trigger.offerCents = offer.cents;
   console.log(`[${trigger.notificationId}] Offerta su ${trigger.marketplaceHost}: ${formatMarketplacePrice(offer.cents, trigger.currency)} entro il prezzo dell’avviso Keepa (condizione ${describeCondition(trigger.condition)}).`);
 
   if (!settings.autoBuy) return { status: 'dry_run', offerCents: offer.cents };
@@ -441,7 +514,8 @@ async function persistConfig(input) {
     `TELEGRAM_API_ID=${telegramApiId}`,
     `TELEGRAM_API_HASH=${telegramApiHash}`,
     `KEEPA_SENDER_ID=${JSON.stringify(senderId)}`,
-    'HEADLESS=false',
+    `HEADLESS=${settings.headless}`,
+    `AUTO_START_MONITOR=${settings.autoStartMonitor}`,
     ''
   ];
   await writeFile(path.resolve(projectRoot, '.env'), envLines.join('\n'), 'utf8');
@@ -628,12 +702,17 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === 'POST' && url.pathname === '/api/monitor/start') {
     try {
+      monitorStoppedByUser = false;
+      monitorRestartDelay = 10000;
       return sendJson(response, 202, startMonitoring());
     } catch (error) {
       return sendJson(response, 400, { error: error.message });
     }
   }
   if (request.method === 'POST' && url.pathname === '/api/monitor/stop') {
+    monitorStoppedByUser = true;
+    clearTimeout(monitorRestartTimer);
+    monitorRestartTimer = null;
     if (!monitorChild) return sendJson(response, 200, { status: 'idle' });
     monitorChild.kill();
     return sendJson(response, 200, { status: 'stopping' });
@@ -658,19 +737,38 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (journal[trigger.notificationId]) return sendJson(response, 200, { status: 'duplicate_ignored' });
-  journal[trigger.notificationId] = { status: 'queued', createdAt: new Date().toISOString(), asin: trigger.asin, marketplaceHost: trigger.marketplaceHost };
+  journal[trigger.notificationId] = {
+    status: 'queued',
+    createdAt: new Date().toISOString(),
+    asin: trigger.asin,
+    marketplaceHost: trigger.marketplaceHost,
+    currency: trigger.currency,
+    maxItemCents: trigger.maxItemCents,
+    condition: describeCondition(trigger.condition),
+    mode: settings.autoBuy ? 'buy' : 'test'
+  };
   await saveJournal();
   sendJson(response, 202, { status: 'queued', autoBuy: settings.autoBuy });
 
   queue = queue.then(async () => {
     journal[trigger.notificationId].status = 'processing';
+    journal[trigger.notificationId].startedAt = new Date().toISOString();
     await saveJournal();
+    const market = trigger.marketplaceHost.replace(/^www\./, '');
     try {
       const result = await runTrigger(trigger);
-      journal[trigger.notificationId] = { ...journal[trigger.notificationId], ...result, finishedAt: new Date().toISOString() };
+      journal[trigger.notificationId] = { ...journal[trigger.notificationId], ...result, productTitle: trigger.productTitle || '', finishedAt: new Date().toISOString() };
+      const price = result.offerCents ? formatMarketplacePrice(result.offerCents, trigger.currency) : '';
+      const outcome = {
+        dry_run: ['success', `Prova riuscita: ${trigger.asin} su ${market} disponibile a ${price}. Nessun ordine inviato (acquisto automatico disattivato).`],
+        ordered: ['success', `Ordine completato: ${trigger.asin} su ${market} a ${price}.`],
+        payment_declined: ['warning', `Ordine ${result.orderId || ''} creato ma pagamento rifiutato dalla banca: salvato da completare su Amazon.`]
+      }[result.status];
+      if (outcome) logActivity(outcome[0], outcome[1]);
       console.log(`[${trigger.notificationId}] ${result.status}`);
     } catch (error) {
-      journal[trigger.notificationId] = { ...journal[trigger.notificationId], status: 'stopped', error: error.message, finishedAt: new Date().toISOString() };
+      journal[trigger.notificationId] = { ...journal[trigger.notificationId], status: 'stopped', error: error.message, productTitle: trigger.productTitle || '', ...(trigger.offerCents ? { offerCents: trigger.offerCents } : {}), finishedAt: new Date().toISOString() };
+      logActivity('warning', `Avviso ${trigger.asin} su ${market} non acquistato: ${error.message}`);
       console.error(`[${trigger.notificationId}] Fermato: ${error.message}`);
     }
     await saveJournal();
@@ -681,6 +779,7 @@ server.listen(settings.port, '127.0.0.1', () => {
   logActivity('success', `Pannello Keepa aperto su http://127.0.0.1:${settings.port}`);
   console.log(`Keepa Amazon buyer in ascolto su http://127.0.0.1:${settings.port}`);
   console.log('Pannello grafico, accessi Telegram/Amazon e monitoraggio disponibili dal browser.');
+  if (settings.autoStartMonitor) setTimeout(() => tryStartMonitoring('avvio automatico'), 1500);
 });
 
 function stopChildren() {

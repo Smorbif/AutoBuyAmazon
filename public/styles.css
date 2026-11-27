@@ -36,3 +36,24 @@ button:disabled{opacity:.56;cursor:wait;transform:none!important;box-shadow:none
 .language-toggle{height:31px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#4b5b66;padding:0 9px;display:inline-flex;align-items:center;gap:6px;font:600 10px 'DM Sans',sans-serif;cursor:pointer}.language-toggle:hover{background:#f7faf8;border-color:#dce7e0}.language-flag{font-size:14px;line-height:1}.sender-hint{margin:0!important;color:#8b979e!important;line-height:1.45}
 
 .market-buttons{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}.market-button{height:24px;min-width:34px;padding:0 7px;border:1px solid #e6ebe8;border-radius:6px;background:#f8faf9;color:#6b7a73;font:700 9px 'DM Sans',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:4px}.market-button:hover{background:#eef6f1}.market-button.connected{border-color:#bfe0cf;background:#eaf5ef;color:#248161}.market-button.connected:before{content:'✓'}.market-button:disabled{opacity:.5;cursor:default}
+
+/* Avvisi elaborati e registro attività */
+.events-list{margin-top:14px;max-height:520px;overflow:auto;display:grid;gap:10px;padding-right:4px}
+.event-card{border:1px solid #edf0f1;border-left:3px solid #cfd8dd;border-radius:9px;padding:11px 13px;background:#fcfdfd;display:grid;gap:7px}
+.event-card.status-ordered{border-left-color:#2f9b6f}.event-card.status-dry_run{border-left-color:#4b8fc7}.event-card.status-stopped{border-left-color:#d08a5a}.event-card.status-payment_declined{border-left-color:#c9a23a}.event-card.status-processing{border-left-color:#8a7fd1}
+.event-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.event-title{font:600 11px/1.4 'DM Sans',sans-serif;color:#33434e;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.event-state{flex:none;font-size:9px;font-weight:700;padding:4px 8px;border-radius:20px;background:#eef2f4;color:#5f6f79;white-space:nowrap}
+.status-ordered .event-state{background:#e5f4ec;color:#23795a}.status-dry_run .event-state{background:#e8f1f9;color:#2f6e9f}.status-stopped .event-state{background:#fbeee5;color:#a2592b}.status-payment_declined .event-state{background:#fbf3dc;color:#8a6a12}.status-processing .event-state{background:#eeecfa;color:#5b4fae}
+.event-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:9px;color:#8b979e}
+.event-prices{display:flex;flex-wrap:wrap;gap:6px}
+.price-item{display:grid;gap:1px;padding:5px 8px;border-radius:6px;background:#f3f6f5}
+.price-item small{font-size:8px;color:#94a09a}.price-item b{font-size:10px;color:#3b4b45}
+.event-reason{font-size:10px;line-height:1.45;color:#9a5f3c;background:#fdf6f1;border-radius:6px;padding:6px 8px}
+.event-link{font-size:9px;color:#2f7d61;text-decoration:none;justify-self:start}.event-link:hover{text-decoration:underline}
+.activity-list{max-height:520px}
+.log-row{grid-template-columns:16px 1fr auto;align-items:start;gap:8px;padding:7px 0}
+.log-icon{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;background:#eef2f4;color:#7b8a93}
+.log-row.success .log-icon{background:#e5f4ec;color:#23795a}.log-row.warning .log-icon{background:#fbf1e3;color:#a06b2c}.log-row.error .log-icon{background:#fbe9e7;color:#b5483d}
+.log-row .log-message{font-size:10px;line-height:1.45}
+.log-row .log-time{font-size:9px;white-space:nowrap}
